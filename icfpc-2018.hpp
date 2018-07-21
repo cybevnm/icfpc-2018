@@ -8,6 +8,7 @@
 #include <cmath>
 #include <string>
 #include <stdexcept>
+#include <tuple>
 
 namespace icfpc2018 {
 
@@ -64,6 +65,26 @@ struct Vec
 	int y = 0;
 	int z = 0;
 };
+
+inline Vec operator+(const Vec& a, const Vec& b)
+{
+	return Vec(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+inline Vec operator-(const Vec& a, const Vec& b)
+{
+	return Vec(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+inline bool operator==(const Vec& a, const Vec& b)
+{
+	return std::tie(a.x, a.y, a.z) == std::tie(b.x, b.y, b.z);
+}
+
+inline bool operator!=(const Vec& a, const Vec& b)
+{
+	return !(a == b);
+}
 
 struct Region
 {
@@ -129,15 +150,12 @@ class Command
 {
 public:
 	enum Type {
-		/// No args.
 		Halt,
 		// Wait,
-		// Flip,
-		/// lld
+		Flip,
 		SMove,
 		// LMove,
 		// Fission,
-		/// nd
 		Fill,
 		// FussionP,
 		// FussionS,
@@ -149,6 +167,25 @@ public:
 
 	}
 
+	static Command halt();
+
+	static Command flip();
+
+	static Command smove(const Vec& arg);
+
+	static Command smove_x(int x);
+
+	static Command smove_y(int y);
+
+	static Command smove_z(int z);
+
+	static Command fill(const Vec& arg);
+
+	static Command fill_below();
+
+	void serialize(std::ostream& s) const;
+
+private:
 	Type type;
 	std::pair<bool, Vec> arg0;
 };
@@ -161,15 +198,21 @@ public:
 	System(const Matrix& matrix)
 	: matrix(matrix)
 	{
+		trace.reserve(5 * 1000 * 1000);
 	}
 
-	
+	void build_trace();
 
-	unsigned energy = 0;
-	Harmonics harmonics = Harmonics::Low;
+	void serialize_trace(std::ostream& s);
+
+private:
+	void push_command(Command command);
+
+	// unsigned energy = 0;
+	// Harmonics harmonics = Harmonics::Low;
 	Matrix matrix;
 	// bots
-	// trace
+	std::vector<Command> trace;
 };
 
 }
