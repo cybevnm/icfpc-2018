@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 {
 	try
 	{
-		if(argc < 3)
+		if(argc != 4)
 		{
 			throw std::runtime_error("Wrong argv");
 		}
@@ -35,12 +35,13 @@ int main(int argc, char* argv[])
 
 		s.serialize_trace(f);
 
-		write_model_file(s.result_matrix(), "/tmp/result_model.mdl");
+		write_model_file(s.result_matrix(), argv[3]);
 	}
 	catch(const std::runtime_error& e)
 	{
 		std::cerr << e.what() << std::endl;
-		std::cout << "Usage: trace input_model ouput_trace" << std::endl;
+		std::cout << "Usage: trace input_model ouput_trace output_model"
+			<< std::endl;
 		return 1;
 	}
 

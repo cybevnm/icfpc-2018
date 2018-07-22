@@ -6,34 +6,52 @@ pushd ignore
 
 ##############
 
-echo "Removing results..."
+echo "-----------------------"
+echo "Preapring results dir..."
 rm -rf results/
-
-echo "Making results..."
 mkdir results
-
-echo "Copying defaults..."
 cp dfltTracesF/* results/
+
+echo "-----------------------"
+echo "Preparing models dir..."
+rm -rf models/
+mkdir models/
 
 #############
 
 pushd problemsF
 
+echo "-----------------------"
 echo "Genearating..."
 files=(FA*_tgt.mdl)
 for f in "${files[@]}"
 do
-	etrace $f "../results/${f%_tgt.mdl}.nbt"
+	etrace $f "../results/${f%_tgt.mdl}.nbt" "../models/$f"
 done
 
 popd
 
 ##############
 
+pushd problemsF
+
+echo "-----------------------"
+echo "Testing..."
+files=(FA*_tgt.mdl)
+for f in "${files[@]}"
+do
+	diff $f "../models/$f" || echo "Wrong model: ../models/$f"
+done
+
+popd
+
+##############
+
+echo "-----------------------"
 echo "Packing..."
 pushd results
 
-zip ../results.zip *
+zip -q ../results.zip *
 shasum -a 256 ../results.zip
 
 popd
