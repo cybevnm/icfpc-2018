@@ -22,11 +22,40 @@ mkdir models/
 pushd problemsF
 
 echo "-----------------------"
-echo "Genearating..."
+echo "Assembling..."
 files=(FA*_tgt.mdl)
 for f in "${files[@]}"
 do
-	etrace $f "../results/${f%_tgt.mdl}.nbt" "../models/$f"
+	assemble $f "../results/${f%_tgt.mdl}.nbt" "../models/$f"
+done
+
+popd
+
+#############
+
+pushd problemsF
+
+echo "-----------------------"
+echo "Disassembling..."
+files=(FD*_src.mdl)
+for f in "${files[@]}"
+do
+	disassemble $f "../results/${f%_src.mdl}.nbt"
+done
+
+popd
+
+#############
+
+pushd problemsF
+
+echo "-----------------------"
+echo "Reassembling..."
+files=(FR*_src.mdl)
+for f in "${files[@]}"
+do
+		reassemble $f "${f%_src.mdl}_tgt.mdl" "../results/${f%_src.mdl}.nbt" \
+		  "../models/${f%_src.mdl}_tgt.mdl"
 done
 
 popd
@@ -36,8 +65,15 @@ popd
 pushd problemsF
 
 echo "-----------------------"
-echo "Testing..."
+echo "Testing assembled..."
 files=(FA*_tgt.mdl)
+for f in "${files[@]}"
+do
+	diff $f "../models/$f" || echo "Wrong model: ../models/$f"
+done
+
+echo "Testing reassembled..."
+files=(FR*_tgt.mdl)
 for f in "${files[@]}"
 do
 	diff $f "../models/$f" || echo "Wrong model: ../models/$f"

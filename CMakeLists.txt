@@ -7,7 +7,11 @@ find_package(Boost
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14")
 
-add_executable(trace icfpc-2018.cpp trace.cpp)
+add_executable(assemble icfpc-2018.cpp assemble.cpp)
+
+add_executable(disassemble icfpc-2018.cpp disassemble.cpp)
+
+add_executable(reassemble icfpc-2018.cpp reassemble.cpp)
 
 add_executable(tests icfpc-2018.cpp tests.cpp)
 

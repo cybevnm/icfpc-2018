@@ -17,7 +17,7 @@ namespace icfpc2018 {
 
 struct Vec
 {
-	Vec(int x = 0, int y = 0, int z = 0)
+	explicit Vec(int x = 0, int y = 0, int z = 0)
 	: x(x), y(y), z(z)
 	{
 	}
@@ -74,6 +74,12 @@ struct Vec
 	int z = 0;
 };
 
+inline std::ostream& operator<<(std::ostream& s, const Vec& v)
+{
+	s << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+	return s;
+}
+
 inline Vec operator+(const Vec& a, const Vec& b)
 {
 	return Vec(a.x + b.x, a.y + b.y, a.z + b.z);
@@ -123,7 +129,7 @@ struct Region
 class Matrix
 {
 public:
-	Matrix(unsigned R)
+	explicit Matrix(unsigned R)
 	: r(R)
 	{
 		assert(R > 0 && R < 251);
@@ -189,7 +195,7 @@ public:
 		// Fission,
 		Fill,
 
-		// Void,
+		Void,
 
 		// FussionP,
 		// FussionS,
@@ -203,7 +209,7 @@ public:
 	{
 	}
 
-	Command(Type type)
+	explicit Command(Type type)
 	: t(type)
 	{
 	}
@@ -234,6 +240,10 @@ public:
 
 	static Command fill_below();
 
+	static Command voiid(const Vec& arg);
+
+	static Command voiid_below();
+
 	void serialize(std::ostream& s) const;
 
 private:
@@ -246,11 +256,23 @@ enum class Harmonics { Low, High };
 class System
 {
 public:
-	System(const Matrix& matrix)
+	explicit System(const Matrix& matrix)
 	: mat(matrix)
 	, out_mat(matrix.R())
 	{
 		trace.reserve(5 * 1000 * 1000);
+	}
+
+	/// Allows to continue the src execution.
+	System(const System& src, const Matrix& matrix)
+	: System(matrix)
+	{
+		assert(!src.out_mat.calc_bounding_region().first);
+		harmonics = src.harmonics;
+		e = src.e;
+		pos = src.pos;
+		assert(!src.curr_command.first);
+		trace = src.trace;
 	}
 
 	void serialize_trace(std::ostream& s);
@@ -265,12 +287,12 @@ public:
 		return pos;
 	}
 
-	const Matrix& matrix()
+	const Matrix& matrix() const
 	{
 		return mat;
 	}
 
-	const Matrix& out_matrix()
+	Matrix& out_matrix()
 	{
 		return out_mat;
 	}
@@ -282,8 +304,16 @@ public:
 
 	void push_and_step(Command command);
 
+private:
+	void move_to_x(int x);
+	void move_to_y(int y);
+	void move_to_z(int z);
+
 public:
-	void move_to(const Vec& tgt);
+	enum class MovementOrder { XZY, YZX };
+
+	void move_to(const Vec& tgt,
+		MovementOrder order = MovementOrder::XZY);
 
 private:
 	Matrix mat;
@@ -299,24 +329,61 @@ private:
 
 };
 
-class Builder
+class Tracer
 {
 public:
-	Builder(System& system)
-	: s(system)
+	enum class Direction { Up, Down };
+
+	Tracer(System& system, Direction dir)
+	: s(system), dir(dir)
 	{
 	}
 
-	void build_trace();
+	virtual ~Tracer() { }
+
+	void run();
+
+	void halt();
+
+protected:
+	System& s;
+
+	Direction dir;
+
+private:
+	virtual void handle_voxel(const Vec& p) = 0;
 
 private:
 	void scan_xz_plane(int y);
 
 private:
-	System& s;
-
-private:
 	Region bounding_region;
+
 };
 
-}
+class Assembler : public Tracer
+{
+public:
+	explicit Assembler(System& system)
+	: Tracer(system, Direction::Up)
+	{
+	}
+
+private:
+	void handle_voxel(const Vec& p) override;
+};
+
+class Disassembler : public Tracer
+{
+public:
+	explicit Disassembler(System& system)
+	: Tracer(system, Direction::Down)
+	{
+		system.out_matrix() = system.matrix();
+	}
+
+private:
+	void handle_voxel(const Vec& p) override;
+};
+
+} //

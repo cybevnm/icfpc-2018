@@ -1,6 +1,7 @@
 #include "icfpc-2018.hpp"
 #include <limits>
 #include <algorithm>
+#include <sstream>
 
 namespace icfpc2018 {
 
@@ -9,8 +10,11 @@ std::pair<bool, Region> Matrix::calc_bounding_region() const
 	const int max = std::numeric_limits<int>::max();
 	const int min = std::numeric_limits<int>::min();
 
-	Vec a(max, max, max);
-	Vec b(min, min, min);
+	const Vec vmax(max, max, max);
+	const Vec vmin(min, min, min);
+
+	Vec a = vmax;
+	Vec b = vmin;
 
 	for(int x = 0; x < R(); ++x)
 	{
@@ -31,15 +35,14 @@ std::pair<bool, Region> Matrix::calc_bounding_region() const
 			}
 		}
 	}
-
-	Vec c = b - a;
-	if(c.x >= 0 && c.y >= 0 && c.z >= 0)
+	
+	if(b.x < a.x || b.y < a.y || b.z < a.z)
 	{
-		return std::make_pair(true, Region(a, b));
+		return std::make_pair(false, Region());
 	}
 	else
 	{
-		return std::make_pair(false, Region());
+		return std::make_pair(true, Region(a, b));
 	}
 }
 
@@ -66,14 +69,13 @@ std::pair<bool, Region> Matrix::calc_bounding_region_y(int y) const
 		}
 	}
 
-	Vec c = b - a;
-	if(c.x >= 0 && c.y >= 0 && c.z >= 0)
+	if(b.x < a.x || b.z < a.z)
 	{
-		return std::make_pair(true, Region(a, b));
+		return std::make_pair(false, Region());
 	}
 	else
 	{
-		return std::make_pair(false, Region());
+		return std::make_pair(true, Region(a, b));
 	}
 }
 
@@ -218,7 +220,7 @@ Command Command::fill(const Vec& arg)
 {
 	if(!arg.nd())
 	{
-		throw std::runtime_error("smove: fill is not nd");
+		throw std::runtime_error("fill: arg is not nd");
 	}
 
 	Command c(Fill);
@@ -230,6 +232,24 @@ Command Command::fill(const Vec& arg)
 Command Command::fill_below()
 {
 	return fill(Vec(0, -1, 0));
+}
+
+Command Command::voiid(const Vec& arg)
+{
+	if(!arg.nd())
+	{
+		throw std::runtime_error("void: arg is not nd");
+	}
+
+	Command c(Void);
+	c.a0.first = true;
+	c.a0.second = arg;
+	return c;
+}
+
+Command Command::voiid_below()
+{
+	return voiid(Vec(0, -1, 0));
 }
 
 void Command::serialize(std::ostream& s) const
@@ -300,6 +320,24 @@ void Command::serialize(std::ostream& s) const
 			break;
 		}
 	///////////////////////
+	case Void:
+		{
+			assert(a0.first);
+			assert(a0.second.nd());
+
+			unsigned a
+				= 9 * (a0.second.x + 1)
+				+ 3 * (a0.second.y + 1)
+				+ 1 * (a0.second.z + 1);
+
+			a = (a << 3) | 0x2;
+
+			s.write(reinterpret_cast<char*>(&a), 1);
+
+			break;
+		}
+
+	///////////////////////
 	default:
 		assert(false);
 	}
@@ -366,12 +404,18 @@ void System::step()
 
 		if(pos.x < 0 || pos.y < 0 || pos.z < 0)
 		{
-			throw std::runtime_error("Wrong position (negative)");
+			std::ostringstream os;
+			os << "Wrong position (negative), mat.R = " << mat.R()
+				<< ", pos = " << pos;
+			throw std::runtime_error(os.str());
 		}
 
 		if(pos.x >= mat.R() || pos.y >= mat.R() || pos.z >= mat.R())
 		{
-			throw std::runtime_error("Wrong position (positive)");
+			std::ostringstream os;
+			os << "Wrong position (positive), mat.R = " << mat.R()
+				<< ", pos = " << pos;
+			throw std::runtime_error(os.str());
 		}
 
 		break;
@@ -396,6 +440,28 @@ void System::step()
 			break;
 		}
 
+	case Command::Void:
+		{
+			assert(command.arg0().first);
+			assert(command.arg0().second.nd());
+
+			const Vec tgt = pos + command.arg0().second;
+
+			if(out_mat.voxel(tgt))
+			{
+				out_mat.set_voxel(tgt, false);
+				assert(e >= 12);
+				e -= 12;
+			}
+			else
+			{
+				e += 3;
+			}
+
+			break;
+		}
+
+
 	default:
 		assert(false);
 	}
@@ -411,53 +477,43 @@ void System::push_and_step(Command command)
 	step();
 }
 
-void System::move_to(const Vec& tgt)
+namespace {
+const int max_step_len = 15;
+} //
+
+void System::move_to_x(int x)
 {
-	// No volatile points in the volume assumed.
+	const int dx = x - pos.x;
 
-	const Vec d = tgt - pos;
-
-	const int max_step_len = 15;
-
-	if(d.x != 0)
+	if(dx != 0)
 	{
-		const int sign = (d.x > 0) ? 1 : -1;
-		for(int i = 0; i < abs(d.x / max_step_len); ++i)
+		const int sign = (dx > 0) ? 1 : -1;
+		for(int i = 0; i < abs(dx / max_step_len); ++i)
 		{
 			push_and_step(Command::smove_x(max_step_len * sign));
 		}
 
-		const int rem = d.x % max_step_len;
+		const int rem = dx % max_step_len;
 		if(rem != 0)
 		{
 			push_and_step(Command::smove_x(rem));
 		}
 	}
+}
 
-	if(d.z != 0)
+void System::move_to_y(int y)
+{
+	const int dy = y - pos.y;
+
+	if(dy != 0)
 	{
-		const int sign = (d.z > 0) ? 1 : -1;
-		for(int i = 0; i < abs(d.z / max_step_len); ++i)
-		{
-			push_and_step(Command::smove_z(max_step_len * sign));
-		}
-
-		const int rem = d.z % max_step_len;
-		if(rem != 0)
-		{
-			push_and_step(Command::smove_z(rem));
-		}
-	}
-
-	if(d.y != 0)
-	{
-		const int sign = (d.y > 0) ? 1 : -1;
-		for(int i = 0; i < abs(d.y / max_step_len); ++i)
+		const int sign = (dy > 0) ? 1 : -1;
+		for(int i = 0; i < abs(dy / max_step_len); ++i)
 		{
 			push_and_step(Command::smove_y(max_step_len * sign));
 		}
 
-		const int rem = d.y % max_step_len;
+		const int rem = dy % max_step_len;
 		if(rem != 0)
 		{
 			push_and_step(Command::smove_y(rem));
@@ -465,7 +521,45 @@ void System::move_to(const Vec& tgt)
 	}
 }
 
-void Builder::build_trace()
+void System::move_to_z(int z)
+{
+	const int dz = z - pos.z;
+
+	if(dz != 0)
+	{
+		const int sign = (dz > 0) ? 1 : -1;
+		for(int i = 0; i < abs(dz / max_step_len); ++i)
+		{
+			push_and_step(Command::smove_z(max_step_len * sign));
+		}
+
+		const int rem = dz % max_step_len;
+		if(rem != 0)
+		{
+			push_and_step(Command::smove_z(rem));
+		}
+	}
+}
+
+void System::move_to(const Vec& tgt, MovementOrder order)
+{
+	// No volatile points in the volume assumed.
+
+	if(order == MovementOrder::XZY)
+	{
+		move_to_x(tgt.x);
+		move_to_z(tgt.z);
+		move_to_y(tgt.y);
+	}
+	else if(order == MovementOrder::YZX)
+	{
+		move_to_y(tgt.y);
+		move_to_z(tgt.z);
+		move_to_x(tgt.x);
+	}
+}
+
+void Tracer::run()
 {
 	if(s.matrix().R() < 2)
 	{
@@ -497,8 +591,11 @@ void Builder::build_trace()
 	///////////////////
 	// Move to the starting point. 
 
-	Vec initial_pos(bounding_region.a.x, 1, bounding_region.a.z);
-	s.move_to(initial_pos);
+	const int initial_y = dir == Tracer::Direction::Up
+		? 1 : (bounding_region.b.y + 1);
+
+	Vec initial_pos(bounding_region.a.x, initial_y, bounding_region.a.z);
+	s.move_to(initial_pos, System::MovementOrder::YZX);
 	assert(s.bot_pos() == initial_pos);
 
 	///////////////////
@@ -506,7 +603,7 @@ void Builder::build_trace()
 	s.push_and_step(Command::flip());
 
 	///////////////////
-	// Build the model.
+	// Iterate the matrix.
 
 	for(int y = 1; y < bounding_region.b.y + 2; ++y)
 	{
@@ -514,33 +611,33 @@ void Builder::build_trace()
 
 		if(y < bounding_region.b.y + 1)
 		{
-			s.push_and_step(Command::smove_y(1));
+			s.push_and_step(Command::smove_y(
+				(dir == Tracer::Direction::Up) ? 1 : -1));
 		}
 	}
 
 	///////////////////
 
-	assert(s.bot_pos().y == bounding_region.b.y + 1);
+	assert(s.bot_pos().y == bounding_region.b.y + 1
+		|| s.bot_pos().y == 1);
 
 	///////////////////
 
 	s.push_and_step(Command::flip());
+}
 
-	///////////////////
-
+void Tracer::halt()
+{
 	s.move_to(Vec());
 	assert(s.bot_pos() == Vec());
-
-	///////////////////
 
 	s.push_and_step(Command::halt());
 }
 
-void Builder::scan_xz_plane(int y)
+void Tracer::scan_xz_plane(int y)
 {
 	assert(y >= 0);
 	assert(s.bot_pos().y == y + 1 && "bot must be one level above");
-
 
 	const std::pair<bool, Region> curr_region
 		= s.matrix().calc_bounding_region_y(y);
@@ -594,11 +691,21 @@ void Builder::scan_xz_plane(int y)
 				if(s.matrix().voxel(Vec(x, y, z)))
 				{
 					s.move_to(Vec(x, s.bot_pos().y, z));
-					s.push_and_step(Command::fill_below());
+					handle_voxel(Vec(x, y, z));
 				}
 			}
 		}
 	}
+}
+
+void Assembler::handle_voxel(const Vec& p)
+{
+	s.push_and_step(Command::fill_below());
+}
+
+void Disassembler::handle_voxel(const Vec& p)
+{
+	s.push_and_step(Command::voiid_below());
 }
 
 } //
