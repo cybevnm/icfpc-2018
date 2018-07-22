@@ -11,6 +11,7 @@
 #include <tuple>
 #include <fstream>
 #include <iostream>
+#include <cstdint>
 
 namespace icfpc2018 {
 
@@ -245,7 +246,7 @@ public:
 
 	const Matrix& result_matrix() const;
 
-	unsigned energy() const
+	uint64_t energy() const
 	{
 		return e;
 	}
@@ -262,7 +263,7 @@ private:
 	Matrix out_matrix;
 
 	Harmonics harmonics = Harmonics::Low;
-	unsigned e = 0;
+	uint64_t e = 0;
 
 	Vec pos;
 
