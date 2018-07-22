@@ -9,6 +9,8 @@
 #include <string>
 #include <stdexcept>
 #include <tuple>
+#include <fstream>
+#include <iostream>
 
 namespace icfpc2018 {
 
@@ -123,6 +125,8 @@ public:
 		bits[c.x * r * r + c.y * r + c.z] = full;
 	}
 
+	void print(std::ostream& s) const;
+
 	// bool grounded(const Vec& c) const
 	// {
 	// 	if(c.y == 0)
@@ -197,6 +201,7 @@ class System
 public:
 	System(const Matrix& matrix)
 	: matrix(matrix)
+	, out_matrix(matrix.R())
 	{
 		trace.reserve(5 * 1000 * 1000);
 	}
@@ -205,12 +210,15 @@ public:
 
 	void serialize_trace(std::ostream& s);
 
+	const Matrix& result_matrix() const;
+
 private:
 	void push_command(Command command);
 
 	// unsigned energy = 0;
 	// Harmonics harmonics = Harmonics::Low;
 	Matrix matrix;
+	Matrix out_matrix;
 	// bots
 	std::vector<Command> trace;
 };

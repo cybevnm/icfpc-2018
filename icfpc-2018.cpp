@@ -1,21 +1,22 @@
 #include "icfpc-2018.hpp"
-#include <fstream>
-#include <iostream>
-
-namespace {
-
-template<typename S>
-void throw_bad_file(const S& f, const std::string& path)
-{
-	if(!f)
-	{
-		throw std::runtime_error("Bad model file " + path);
-	}
-}
-
-}
 
 namespace icfpc2018 {
+
+void Matrix::print(std::ostream& s) const
+{
+	for(size_t y = 0; y < R(); ++y)
+	{
+		for(size_t x = 0; x < R(); ++x)
+		{
+			for(size_t z = 0; z < R(); ++z)
+			{
+				s << (voxel(Vec(x,y,z)) ? 'x' : '.');
+			}
+			s << std::endl;
+		}
+		s << "---------------------" << std::endl;
+	}
+}
 
 Matrix read_model_file(const std::string& path)
 {
@@ -37,7 +38,7 @@ Matrix read_model_file(const std::string& path)
 
 	Matrix result(r);
 
-	std::vector<char> data(r * r * r / 8);
+	std::vector<char> data((r * r * r) / 8);
 	f.read(data.data(), data.size());
 	if(!f || f.gcount() != data.size())
 	{
@@ -50,9 +51,9 @@ Matrix read_model_file(const std::string& path)
 		{
 			for(int z = 0; z < r; ++z)
 			{
-				const uint8_t& byte = data[(x * r * r + y * r + z) / 8];
-				const size_t i = z % 8;
-				const bool full = byte & (1 << i);
+				const size_t i = x * r * r + y * r + z;
+				const uint8_t byte = data[i / 8];
+				const bool full = byte & (1 << i % 8);
 				result.set_voxel(Vec(x, y, z), full);
 			}
 		}
@@ -76,7 +77,7 @@ void write_model_file(const Matrix& m, const std::string& path)
 		throw std::runtime_error("Can't write R to " + path);
 	}
 
-	std::vector<char> data(r * r * r / 8);
+	std::vector<char> data((r * r * r) / 8);
 
 	for(int x = 0; x < r; ++x)
 	{
@@ -84,11 +85,11 @@ void write_model_file(const Matrix& m, const std::string& path)
 		{
 			for(int z = 0; z < r; ++z)
 			{
-				char& byte = data[(x * r * r + y * r + z) / 8];
-				const size_t i = z % 8;
+				const size_t i = x * r * r + y * r + z;
+				char& byte = data[i / 8];
 				if(m.voxel(Vec(x, y, z)))
 				{
-					byte = byte | (1 << i);
+					byte = byte | (1 << i % 8);
 				}
 			}
 		}
@@ -182,8 +183,8 @@ void Command::serialize(std::ostream& s) const
 			assert(arg0.first);
 			assert(arg0.second.lld());
 
-			char a = 0;
-			char b = 0;
+			unsigned a = 0;
+			unsigned b = 0;
 
 			if(arg0.second.x != 0)
 			{
@@ -201,8 +202,8 @@ void Command::serialize(std::ostream& s) const
 				b = (0x1f & (arg0.second.z + 15));
 			}
 
-			s.write(&a, 1);
-			s.write(&b, 1);
+			s.write(reinterpret_cast<char*>(&a), 1);
+			s.write(reinterpret_cast<char*>(&b), 1);
 
 			break;
 		}
@@ -212,14 +213,14 @@ void Command::serialize(std::ostream& s) const
 			assert(arg0.first);
 			assert(arg0.second.nd());
 
-			char a
+			unsigned a
 				= 9 * (arg0.second.x + 1)
 				+ 3 * (arg0.second.y + 1)
 				+ 1 * (arg0.second.z + 1);
 
 			a = (a << 3) | 0x3;
 
-			s.write(&a, 1);
+			s.write(reinterpret_cast<char*>(&a), 1);
 
 			break;
 		}
@@ -252,7 +253,8 @@ void System::build_trace()
 			{
 				if(matrix.voxel(pos - Vec(0, 1, 0)))
 				{
-					push_command(Command::fill_below()); //
+					push_command(Command::fill_below());            //
+					out_matrix.set_voxel(pos - Vec(0, 1, 0), true); //
 				}
 
 				push_command(Command::smove_z(z_sweep_dir)); //
@@ -355,6 +357,11 @@ void System::serialize_trace(std::ostream& s)
 	{
 		c.serialize(s);
 	}
+}
+
+const Matrix& System::result_matrix() const
+{
+	return out_matrix;
 }
 
 void System::push_command(Command command)
