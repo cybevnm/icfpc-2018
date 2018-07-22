@@ -259,6 +259,9 @@ private:
 	void push_and_step(Command command);
 
 private:
+	void scan_xz_plane(int y);
+
+private:
 	Matrix matrix;
 	Matrix out_matrix;
 
@@ -269,6 +272,11 @@ private:
 
 	std::pair<bool, Command> curr_command;
 	std::vector<Command> trace;
+
+private:
+	Region bounding_region;
+	int x_sweep_dir = 1;
+	int z_sweep_dir = 1;
 };
 
 }

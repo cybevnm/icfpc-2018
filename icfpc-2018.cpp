@@ -277,7 +277,7 @@ void System::build_trace()
 		throw std::runtime_error("Matrix too small for this algo");
 	}
 
-	const Region bounding_region = matrix.calc_bounding_region();
+	bounding_region = matrix.calc_bounding_region();
 
 	assert(bounding_region.a.x > 0 && bounding_region.a.x < matrix.R() - 1);
 	assert(bounding_region.a.y >= 0 && bounding_region.a.y < matrix.R() - 1);
@@ -286,13 +286,6 @@ void System::build_trace()
 	assert(bounding_region.b.x > 0 && bounding_region.b.x < matrix.R() - 1);
 	assert(bounding_region.b.y >= 0 && bounding_region.b.y < matrix.R() - 1);
 	assert(bounding_region.b.z > 0 && bounding_region.b.z < matrix.R() - 1);
-
-	int x_sweep_dir = 1;
-	int z_sweep_dir = 1;
-
-	push_and_step(Command::smove_y(1));
-
-	push_and_step(Command::flip());
 
 	// Move to the starting point.
 	for(int x = 0; x < bounding_region.a.x; ++x)
@@ -305,58 +298,34 @@ void System::build_trace()
 		push_and_step(Command::smove_z(1));
 	}
 
-	assert(pos.x == bounding_region.a.x);
-	assert(pos.z == bounding_region.a.z);
+	////////////////////////////////
+
+	assert(pos.x == bounding_region.a.x
+		|| pos.x == bounding_region.b.x);
+	assert(pos.z == bounding_region.a.z
+		|| pos.z == bounding_region.b.z);
+
+	////////////////////////////////
+
+	push_and_step(Command::smove_y(1));
+
+	push_and_step(Command::flip());
 
 	// Build the model.
 	for(int y = 1; y < bounding_region.b.y + 2; ++y)
 	{
-		for(int x = bounding_region.a.x;
-				x <= bounding_region.b.x; ++x)
-		{
-			for(int z = bounding_region.a.z;
-					z <= bounding_region.b.z; ++z)
-			{
-				if(matrix.voxel(pos - Vec(0, 1, 0)))
-				{
-					push_and_step(Command::fill_below());
-				}
 
-				if(z != bounding_region.b.z)
-				{
-					push_and_step(Command::smove_z(z_sweep_dir));
-				}
-			}
-
-			assert(pos.z == bounding_region.a.z
-				|| pos.z == bounding_region.b.z);
-
-			if(x != bounding_region.b.x)
-			{
-				push_and_step(Command::smove_x(x_sweep_dir));
-			}
-
-			z_sweep_dir *= -1;
-		}
-
-		assert(pos.x == bounding_region.a.x
-			|| pos.x == bounding_region.b.x);
+		scan_xz_plane(pos.y - 1);
 
 		if(y < bounding_region.b.y + 1)
 		{
 			push_and_step(Command::smove_y(1));
 		}
-
-		x_sweep_dir *= -1;
 	}
 
 	///////////////////
 
 	assert(pos.y == bounding_region.b.y + 1);
-	assert(pos.x == bounding_region.a.x
-		|| pos.x == bounding_region.b.x);
-	assert(pos.z == bounding_region.a.z
-		|| pos.z == bounding_region.b.z);
 
 	///////////////////
 
@@ -518,6 +487,53 @@ void System::push_and_step(Command command)
 {
 	push(command);
 	step();
+}
+
+void System::scan_xz_plane(int y)
+{
+	assert(y >= 0);
+	assert(pos.y == y + 1 && "bot must be one level above");
+
+	////////////////////////////////
+
+	for(int x = bounding_region.a.x;
+			x <= bounding_region.b.x; ++x)
+	{
+		for(int z = bounding_region.a.z;
+				z <= bounding_region.b.z; ++z)
+		{
+			if(matrix.voxel(pos - Vec(0, 1, 0)))
+			{
+				push_and_step(Command::fill_below());
+			}
+
+			if(z != bounding_region.b.z)
+			{
+				push_and_step(Command::smove_z(z_sweep_dir));
+			}
+		}
+
+		assert(pos.z == bounding_region.a.z
+			|| pos.z == bounding_region.b.z);
+
+		if(x != bounding_region.b.x)
+		{
+			push_and_step(Command::smove_x(x_sweep_dir));
+		}
+
+		z_sweep_dir *= -1;
+	}
+
+	x_sweep_dir *= -1;
+
+	////////////////////////////////
+
+	assert(pos.x == bounding_region.a.x
+		|| pos.x == bounding_region.b.x);
+	assert(pos.z == bounding_region.a.z
+		|| pos.z == bounding_region.b.z);
+
+	////////////////////////////////
 }
 
 } //
