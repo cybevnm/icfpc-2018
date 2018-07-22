@@ -591,34 +591,13 @@ void Builder::scan_xz_plane(int y)
 			for(int z = curr_region.second.a.z;
 					z <= curr_region.second.b.z; ++z)
 			{
-				if(s.matrix().voxel(s.bot_pos() - Vec(0, 1, 0)))
+				if(s.matrix().voxel(Vec(x, y, z)))
 				{
+					s.move_to(Vec(x, s.bot_pos().y, z));
 					s.push_and_step(Command::fill_below());
 				}
-
-				if(z != curr_region.second.b.z)
-				{
-					s.push_and_step(Command::smove_z(z_sweep_dir));
-				}
 			}
-
-			assert(s.bot_pos().z == curr_region.second.a.z
-				|| s.bot_pos().z == curr_region.second.b.z);
-
-			if(x != curr_region.second.b.x)
-			{
-				s.push_and_step(Command::smove_x(x_sweep_dir));
-			}
-
-			z_sweep_dir *= -1;
 		}
-
-		x_sweep_dir *= -1;
-
-		assert(s.bot_pos().x == curr_region.second.a.x
-			|| s.bot_pos().x == curr_region.second.b.x);
-		assert(s.bot_pos().z == curr_region.second.a.z
-			|| s.bot_pos().z == curr_region.second.b.z);
 	}
 }
 
