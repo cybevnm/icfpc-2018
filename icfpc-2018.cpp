@@ -1,9 +1,10 @@
 #include "icfpc-2018.hpp"
 #include <limits>
+#include <algorithm>
 
 namespace icfpc2018 {
 
-Region Matrix::calc_bounding_region() const
+std::pair<bool, Region> Matrix::calc_bounding_region() const
 {
 	const int max = std::numeric_limits<int>::max();
 	const int min = std::numeric_limits<int>::min();
@@ -34,11 +35,45 @@ Region Matrix::calc_bounding_region() const
 	Vec c = b - a;
 	if(c.x >= 0 && c.y >= 0 && c.z >= 0)
 	{
-		return Region(a, b);
+		return std::make_pair(true, Region(a, b));
 	}
 	else
 	{
-		throw std::runtime_error("Empty matrix ?");
+		return std::make_pair(false, Region());
+	}
+}
+
+std::pair<bool, Region> Matrix::calc_bounding_region_y(int y) const
+{
+	const int max = std::numeric_limits<int>::max();
+	const int min = std::numeric_limits<int>::min();
+
+	Vec a(max, y, max);
+	Vec b(min, y, min);
+
+	for(int x = 0; x < R(); ++x)
+	{
+		for(int z = 0; z < R(); ++z)
+		{
+			if(voxel(Vec(x, y, z)))
+			{
+				a.x = std::min(x, a.x);
+				a.z = std::min(z, a.z);
+
+				b.x = std::max(x, b.x);
+				b.z = std::max(z, b.z);
+			}
+		}
+	}
+
+	Vec c = b - a;
+	if(c.x >= 0 && c.y >= 0 && c.z >= 0)
+	{
+		return std::make_pair(true, Region(a, b));
+	}
+	else
+	{
+		return std::make_pair(false, Region());
 	}
 }
 
@@ -399,21 +434,6 @@ void System::move_to(const Vec& tgt)
 		}
 	}
 
-	if(d.y != 0)
-	{
-		const int sign = (d.y > 0) ? 1 : -1;
-		for(int i = 0; i < abs(d.y / max_step_len); ++i)
-		{
-			push_and_step(Command::smove_y(max_step_len * sign));
-		}
-
-		const int rem = d.y % max_step_len;
-		if(rem != 0)
-		{
-			push_and_step(Command::smove_y(rem));
-		}
-	}
-
 	if(d.z != 0)
 	{
 		const int sign = (d.z > 0) ? 1 : -1;
@@ -428,6 +448,21 @@ void System::move_to(const Vec& tgt)
 			push_and_step(Command::smove_z(rem));
 		}
 	}
+
+	if(d.y != 0)
+	{
+		const int sign = (d.y > 0) ? 1 : -1;
+		for(int i = 0; i < abs(d.y / max_step_len); ++i)
+		{
+			push_and_step(Command::smove_y(max_step_len * sign));
+		}
+
+		const int rem = d.y % max_step_len;
+		if(rem != 0)
+		{
+			push_and_step(Command::smove_y(rem));
+		}
+	}
 }
 
 void Builder::build_trace()
@@ -437,7 +472,13 @@ void Builder::build_trace()
 		throw std::runtime_error("Matrix too small for this algo");
 	}
 
-	bounding_region = s.matrix().calc_bounding_region();
+	const std::pair<bool, Region> region = s.matrix().calc_bounding_region();
+	if(!region.first)
+	{
+		throw std::runtime_error("Empty matrix ?");
+	}
+
+	bounding_region = region.second;
 
 	assert(bounding_region.a.x > 0
 		&& bounding_region.a.x < s.matrix().R() - 1);
@@ -452,35 +493,23 @@ void Builder::build_trace()
 		&& bounding_region.b.y < s.matrix().R() - 1);
 	assert(bounding_region.b.z > 0
 		&& bounding_region.b.z < s.matrix().R() - 1);
+	
+	///////////////////
+	// Move to the starting point. 
 
-	// Move to the starting point.
-	for(int x = 0; x < bounding_region.a.x; ++x)
-	{
-		s.push_and_step(Command::smove_x(1));
-	}
+	Vec initial_pos(bounding_region.a.x, 1, bounding_region.a.z);
+	s.move_to(initial_pos);
+	assert(s.bot_pos() == initial_pos);
 
-	for(int z = 0; z < bounding_region.a.z; ++z)
-	{
-		s.push_and_step(Command::smove_z(1));
-	}
-
-	////////////////////////////////
-
-	assert(s.bot_pos().x == bounding_region.a.x
-		|| s.bot_pos().x == bounding_region.b.x);
-	assert(s.bot_pos().z == bounding_region.a.z
-		|| s.bot_pos().z == bounding_region.b.z);
-
-	////////////////////////////////
-
-	s.push_and_step(Command::smove_y(1));
+	///////////////////
 
 	s.push_and_step(Command::flip());
 
+	///////////////////
 	// Build the model.
+
 	for(int y = 1; y < bounding_region.b.y + 2; ++y)
 	{
-
 		scan_xz_plane(s.bot_pos().y - 1);
 
 		if(y < bounding_region.b.y + 1)
@@ -499,47 +528,10 @@ void Builder::build_trace()
 
 	///////////////////
 
-	if(s.bot_pos().x != 0)
-	{
-		const int steps_num = s.bot_pos().x;
-		for(int x = 0; x < steps_num; ++x)
-		{
-			s.push_and_step(Command::smove_x(-1));
-		}
-	}
-
-	assert(s.bot_pos().x == 0);
+	s.move_to(Vec());
+	assert(s.bot_pos() == Vec());
 
 	///////////////////
-
-	if(s.bot_pos().z != 0)
-	{
-		const int steps_num = s.bot_pos().z;
-		for(int z = 0; z < steps_num; ++z)
-		{
-			s.push_and_step(Command::smove_z(-1));
-		}
-
-	}
-
-	assert(s.bot_pos().z == 0);
-
-	///////////////////
-
-	if(s.bot_pos().y != 0)
-	{
-		const int steps_num = s.bot_pos().y;
-		for(int y = 0; y < steps_num; ++y)
-		{
-			s.push_and_step(Command::smove_y(-1));
-		}
-	}
-
-	assert(s.bot_pos().y == 0);
-
-	///////////////////
-
-	assert(s.bot_pos() == Vec(0,0,0));
 
 	s.push_and_step(Command::halt());
 }
@@ -549,46 +541,85 @@ void Builder::scan_xz_plane(int y)
 	assert(y >= 0);
 	assert(s.bot_pos().y == y + 1 && "bot must be one level above");
 
-	////////////////////////////////
 
-	for(int x = bounding_region.a.x;
-			x <= bounding_region.b.x; ++x)
+	const std::pair<bool, Region> curr_region
+		= s.matrix().calc_bounding_region_y(y);
+
+	if(curr_region.first)
 	{
-		for(int z = bounding_region.a.z;
-				z <= bounding_region.b.z; ++z)
-		{
-			if(s.matrix().voxel(s.bot_pos() - Vec(0, 1, 0)))
-			{
-				s.push_and_step(Command::fill_below());
-			}
+		const std::vector<Vec> corners = {
+			curr_region.second.a,
+			Vec(curr_region.second.a.x, y, curr_region.second.b.z),
+			curr_region.second.b,
+			Vec(curr_region.second.b.x, y, curr_region.second.a.z)
+		};
 
-			if(z != bounding_region.b.z)
-			{
-				s.push_and_step(Command::smove_z(z_sweep_dir));
-			}
+		const auto closest_corner_it = std::min_element(
+			begin(corners), end(corners),
+			[&](const auto& a, const auto& b) {
+				return (a - s.bot_pos()).mlen() < (b - s.bot_pos()).mlen();
+		});
+
+		assert(closest_corner_it != corners.end());
+
+		int x_sweep_dir = 0;
+		int z_sweep_dir = 0;
+		
+		if(closest_corner_it->x == curr_region.second.a.x)
+		{
+			x_sweep_dir = 1;
+		}
+		else
+		{
+			x_sweep_dir = -1;
 		}
 
-		assert(s.bot_pos().z == bounding_region.a.z
-			|| s.bot_pos().z == bounding_region.b.z);
-
-		if(x != bounding_region.b.x)
+		if(closest_corner_it->z == curr_region.second.a.z)
 		{
-			s.push_and_step(Command::smove_x(x_sweep_dir));
+			z_sweep_dir = 1;
+		}
+		else
+		{
+			z_sweep_dir = -1;
 		}
 
-		z_sweep_dir *= -1;
+		s.move_to(closest_corner_it->xz(s.bot_pos().y));
+
+		for(int x = curr_region.second.a.x;
+				x <= curr_region.second.b.x; ++x)
+		{
+			for(int z = curr_region.second.a.z;
+					z <= curr_region.second.b.z; ++z)
+			{
+				if(s.matrix().voxel(s.bot_pos() - Vec(0, 1, 0)))
+				{
+					s.push_and_step(Command::fill_below());
+				}
+
+				if(z != curr_region.second.b.z)
+				{
+					s.push_and_step(Command::smove_z(z_sweep_dir));
+				}
+			}
+
+			assert(s.bot_pos().z == curr_region.second.a.z
+				|| s.bot_pos().z == curr_region.second.b.z);
+
+			if(x != curr_region.second.b.x)
+			{
+				s.push_and_step(Command::smove_x(x_sweep_dir));
+			}
+
+			z_sweep_dir *= -1;
+		}
+
+		x_sweep_dir *= -1;
+
+		assert(s.bot_pos().x == curr_region.second.a.x
+			|| s.bot_pos().x == curr_region.second.b.x);
+		assert(s.bot_pos().z == curr_region.second.a.z
+			|| s.bot_pos().z == curr_region.second.b.z);
 	}
-
-	x_sweep_dir *= -1;
-
-	////////////////////////////////
-
-	assert(s.bot_pos().x == bounding_region.a.x
-		|| s.bot_pos().x == bounding_region.b.x);
-	assert(s.bot_pos().z == bounding_region.a.z
-		|| s.bot_pos().z == bounding_region.b.z);
-
-	////////////////////////////////
 }
 
 } //

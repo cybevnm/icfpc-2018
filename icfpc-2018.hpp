@@ -64,6 +64,11 @@ struct Vec
 		return x >= 0 && y >= 0 && z >= 0;
 	}
 
+	Vec xz(int y = 0) const
+	{
+		return Vec(this->x, y, this->z);
+	}
+
 	int x = 0;
 	int y = 0;
 	int z = 0;
@@ -142,7 +147,9 @@ public:
 		bits[c.x * r * r + c.y * r + c.z] = full;
 	}
 
-	Region calc_bounding_region() const;
+	std::pair<bool, Region> calc_bounding_region() const;
+
+	std::pair<bool, Region> calc_bounding_region_y(int y) const;
 
 	void print(std::ostream& s) const;
 
@@ -181,8 +188,14 @@ public:
 		// LMove,
 		// Fission,
 		Fill,
+
+		// Void,
+
 		// FussionP,
 		// FussionS,
+
+		// GFill,
+		// GVoid,
 	};
 
 	Command()
@@ -304,8 +317,6 @@ private:
 
 private:
 	Region bounding_region;
-	int x_sweep_dir = 1;
-	int z_sweep_dir = 1;
 };
 
 }
