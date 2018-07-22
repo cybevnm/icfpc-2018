@@ -660,20 +660,22 @@ void Tracer::scan_xz_plane(int y)
 		const auto furthest_vertex_it = vertices.begin()
 			+ ((closest_vertex_it - vertices.begin()) + 2) % vertices.size();
 		assert(furthest_vertex_it != vertices.end());
+
+		s.move_to(closest_vertex_it->xz(s.bot_pos().y));
 		
 		const int x_sweep_dir
 			= (closest_vertex_it->x < furthest_vertex_it->x) ? 1 : -1;
-		const int z_sweep_dir
+		int z_sweep_dir
 			= (closest_vertex_it->z < furthest_vertex_it->z) ? 1 : -1;
-
-		s.move_to(closest_vertex_it->xz(s.bot_pos().y));
+		int src_z = closest_vertex_it->z;
+		int tgt_z = furthest_vertex_it->z;
 
 		for(int x = closest_vertex_it->x;
-				x != (furthest_vertex_it->x + x_sweep_dir);
+				x != furthest_vertex_it->x + x_sweep_dir;
 				x += x_sweep_dir)
 		{
-			for(int z = closest_vertex_it->z;
-					z != (furthest_vertex_it->z + z_sweep_dir);
+			for(int z = src_z;
+					z != tgt_z + z_sweep_dir;
 					z += z_sweep_dir)
 			{
 				if(s.matrix().voxel(Vec(x, y, z)))
@@ -682,6 +684,8 @@ void Tracer::scan_xz_plane(int y)
 					handle_voxel(Vec(x, y, z));
 				}
 			}
+			std::swap(src_z, tgt_z);
+			z_sweep_dir *= -1;
 		}
 	}
 }
