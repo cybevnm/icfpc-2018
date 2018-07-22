@@ -76,7 +76,8 @@ Matrix read_model_file(const std::string& path)
 
 	Matrix result(r);
 
-	std::vector<char> data((r * r * r) / 8);
+	const unsigned rrr = r * r * r;
+	std::vector<char> data((rrr / 8) + ((rrr % 8) ? 1 : 0));
 	f.read(data.data(), data.size());
 	if(!f || f.gcount() != data.size())
 	{
@@ -115,7 +116,8 @@ void write_model_file(const Matrix& m, const std::string& path)
 		throw std::runtime_error("Can't write R to " + path);
 	}
 
-	std::vector<char> data((r * r * r) / 8);
+	const unsigned rrr = r * r * r;
+	std::vector<char> data((rrr / 8) + ((rrr % 8) ? 1 : 0));
 
 	for(int x = 0; x < r; ++x)
 	{
@@ -124,7 +126,7 @@ void write_model_file(const Matrix& m, const std::string& path)
 			for(int z = 0; z < r; ++z)
 			{
 				const size_t i = x * r * r + y * r + z;
-				char& byte = data[i / 8];
+				char& byte = data.at(i / 8);
 				if(m.voxel(Vec(x, y, z)))
 				{
 					byte = byte | (1 << i % 8);
