@@ -88,12 +88,28 @@ inline bool operator!=(const Vec& a, const Vec& b)
 	return !(a == b);
 }
 
+/// Inclusive.
 struct Region
 {
-	// bool member()
-	// {
-	// 
-	// }
+	Region()
+	{
+	}
+
+	Region(const Vec& a, const Vec& b)
+	{
+		this->a.x = std::min(a.x, b.x);
+		this->a.y = std::min(a.y, b.y);
+		this->a.z = std::min(a.z, b.z);
+
+		this->b.x = std::max(a.x, b.x);
+		this->b.y = std::max(a.y, b.y);
+		this->b.z = std::max(a.z, b.z);
+	}
+
+	Vec size() const
+	{
+		return b - a + Vec(1, 1, 1);
+	}
 
 	Vec a, b;
 };
@@ -125,6 +141,8 @@ public:
 		bits[c.x * r * r + c.y * r + c.z] = full;
 	}
 
+	Region calc_bounding_region() const;
+
 	void print(std::ostream& s) const;
 
 	// bool grounded(const Vec& c) const
@@ -154,6 +172,7 @@ class Command
 {
 public:
 	enum Type {
+		Undefined,
 		Halt,
 		// Wait,
 		Flip,
@@ -165,10 +184,24 @@ public:
 		// FussionS,
 	};
 
-	Command(Type type)
-	: type(type)
+	Command()
+	: t(Undefined)
 	{
+	}
 
+	Command(Type type)
+	: t(type)
+	{
+	}
+
+	Type type() const
+	{
+		return t;
+	}
+
+	const std::pair<bool, Vec>&	arg0() const
+	{
+		return a0;
 	}
 
 	static Command halt();
@@ -190,8 +223,8 @@ public:
 	void serialize(std::ostream& s) const;
 
 private:
-	Type type;
-	std::pair<bool, Vec> arg0;
+	Type t;
+	std::pair<bool, Vec> a0;
 };
 
 enum class Harmonics { Low, High };
@@ -212,14 +245,28 @@ public:
 
 	const Matrix& result_matrix() const;
 
-private:
-	void push_command(Command command);
+	unsigned energy() const
+	{
+		return e;
+	}
 
-	// unsigned energy = 0;
-	// Harmonics harmonics = Harmonics::Low;
+private:
+	void push(Command command);
+
+	void step();
+
+	void push_and_step(Command command);
+
+private:
 	Matrix matrix;
 	Matrix out_matrix;
-	// bots
+
+	Harmonics harmonics = Harmonics::Low;
+	unsigned e = 0;
+
+	Vec pos;
+
+	std::pair<bool, Command> curr_command;
 	std::vector<Command> trace;
 };
 
