@@ -340,19 +340,21 @@ void System::build_trace()
 		assert(pos.x == bounding_region.a.x
 			|| pos.x == bounding_region.b.x);
 
-		push_and_step(Command::smove_y(1));
+		if(y < bounding_region.b.y + 1)
+		{
+			push_and_step(Command::smove_y(1));
+		}
 
 		x_sweep_dir *= -1;
 	}
 
 	///////////////////
 
-	assert(pos.y == bounding_region.b.y + 2);
+	assert(pos.y == bounding_region.b.y + 1);
 	assert(pos.x == bounding_region.a.x
 		|| pos.x == bounding_region.b.x);
 	assert(pos.z == bounding_region.a.z
 		|| pos.z == bounding_region.b.z);
-
 
 	///////////////////
 
@@ -468,6 +470,16 @@ void System::step()
 
 		pos = pos + command.arg0().second;
 		e += 2 * command.arg0().second.mlen();
+
+		if(pos.x < 0 || pos.y < 0 || pos.z < 0)
+		{
+			throw std::runtime_error("Wrong position (negative)");
+		}
+
+		if(pos.x >= matrix.R() || pos.y >= matrix.R() || pos.z >= matrix.R())
+		{
+			throw std::runtime_error("Wrong position (positive)");
+		}
 
 		break;
 
