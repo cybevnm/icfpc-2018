@@ -566,7 +566,7 @@ void Tracer::run()
 		throw std::runtime_error("Matrix too small for this algo");
 	}
 
-	const std::pair<bool, Region> region = s.matrix().calc_bounding_region();
+	const auto region = s.matrix().calc_bounding_region();
 	if(!region.first)
 	{
 		throw std::runtime_error("Empty matrix ?");
@@ -639,54 +639,42 @@ void Tracer::scan_xz_plane(int y)
 	assert(y >= 0);
 	assert(s.bot_pos().y == y + 1 && "bot must be one level above");
 
-	const std::pair<bool, Region> curr_region
-		= s.matrix().calc_bounding_region_y(y);
+	const auto curr_region = s.matrix().calc_bounding_region_y(y);
 
 	if(curr_region.first)
 	{
-		const std::vector<Vec> corners = {
+		const std::vector<Vec> vertices = {
 			curr_region.second.a,
 			Vec(curr_region.second.a.x, y, curr_region.second.b.z),
 			curr_region.second.b,
 			Vec(curr_region.second.b.x, y, curr_region.second.a.z)
 		};
 
-		const auto closest_corner_it = std::min_element(
-			begin(corners), end(corners),
+		const auto closest_vertex_it = std::min_element(
+			begin(vertices), end(vertices),
 			[&](const auto& a, const auto& b) {
 				return (a - s.bot_pos()).mlen() < (b - s.bot_pos()).mlen();
 		});
+		assert(closest_vertex_it != vertices.end());
 
-		assert(closest_corner_it != corners.end());
-
-		int x_sweep_dir = 0;
-		int z_sweep_dir = 0;
+		const auto furthest_vertex_it = vertices.begin()
+			+ ((closest_vertex_it - vertices.begin()) + 2) % vertices.size();
+		assert(furthest_vertex_it != vertices.end());
 		
-		if(closest_corner_it->x == curr_region.second.a.x)
-		{
-			x_sweep_dir = 1;
-		}
-		else
-		{
-			x_sweep_dir = -1;
-		}
+		const int x_sweep_dir
+			= (closest_vertex_it->x < furthest_vertex_it->x) ? 1 : -1;
+		const int z_sweep_dir
+			= (closest_vertex_it->z < furthest_vertex_it->z) ? 1 : -1;
 
-		if(closest_corner_it->z == curr_region.second.a.z)
-		{
-			z_sweep_dir = 1;
-		}
-		else
-		{
-			z_sweep_dir = -1;
-		}
+		s.move_to(closest_vertex_it->xz(s.bot_pos().y));
 
-		s.move_to(closest_corner_it->xz(s.bot_pos().y));
-
-		for(int x = curr_region.second.a.x;
-				x <= curr_region.second.b.x; ++x)
+		for(int x = closest_vertex_it->x;
+				x != (furthest_vertex_it->x + x_sweep_dir);
+				x += x_sweep_dir)
 		{
-			for(int z = curr_region.second.a.z;
-					z <= curr_region.second.b.z; ++z)
+			for(int z = closest_vertex_it->z;
+					z != (furthest_vertex_it->z + z_sweep_dir);
+					z += z_sweep_dir)
 			{
 				if(s.matrix().voxel(Vec(x, y, z)))
 				{
