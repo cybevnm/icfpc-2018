@@ -31,27 +31,52 @@ std::string read_full(const std::string& path)
 	return ss.str();
 }
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(Vec);
+
 BOOST_AUTO_TEST_CASE(Vec_Test)
 {
-	Vec v1;
+
+}
+
+BOOST_AUTO_TEST_CASE(Command_test)
+{
+
+}
+
+BOOST_AUTO_TEST_CASE(Matrix_test)
+{
+
 }
 
 BOOST_AUTO_TEST_CASE(Model_io_test)
 {
-	BOOST_CHECK_NO_THROW(
-		read_model_file(path("ignore/problemsL/LA001_tgt.mdl")));
-
+	BOOST_CHECK_NO_THROW(read_model_file(path("tests/FA001_tgt.mdl")));
+	
 	{
-		const Matrix m = read_model_file(path("ignore/problemsL/LA001_tgt.mdl"));
+		const Matrix m = read_model_file(path("tests/FA001_tgt.mdl"));
 		BOOST_CHECK_NO_THROW(write_model_file(m, "/tmp/test001.mdl"));
-		BOOST_CHECK_EQUAL(read_full(path("ignore/problemsL/LA001_tgt.mdl")),
+		BOOST_CHECK_EQUAL(read_full(path("tests/FA001_tgt.mdl")),
 			read_full("/tmp/test001.mdl"));
 	}
-
+	
 	{
-		const Matrix m = read_model_file(path("ignore/problemsL/LA186_tgt.mdl"));
+		const Matrix m = read_model_file(path("tests/FA186_tgt.mdl"));
 		BOOST_CHECK_NO_THROW(write_model_file(m, "/tmp/test186.mdl"));
-		BOOST_CHECK_EQUAL(read_full(path("ignore/problemsL/LA186_tgt.mdl")),
+		BOOST_CHECK_EQUAL(read_full(path("tests/FA186_tgt.mdl")),
 			read_full("/tmp/test186.mdl"));
 	}
+}
+
+BOOST_AUTO_TEST_CASE(System_move_to_test)
+{
+	Matrix m(100);
+	System s(m);
+
+	BOOST_CHECK_EQUAL(Vec(), s.bot_pos());
+	s.move_to(Vec(5,5,5));
+	BOOST_CHECK_EQUAL(Vec(5,5,5), s.bot_pos());
+	s.move_to(Vec(20,20,20));
+	BOOST_CHECK_EQUAL(Vec(20,20,20), s.bot_pos());
+	s.move_to(Vec(0,0,0));
+	BOOST_CHECK_EQUAL(Vec(), s.bot_pos());
 }

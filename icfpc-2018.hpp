@@ -234,36 +234,47 @@ class System
 {
 public:
 	System(const Matrix& matrix)
-	: matrix(matrix)
-	, out_matrix(matrix.R())
+	: mat(matrix)
+	, out_mat(matrix.R())
 	{
 		trace.reserve(5 * 1000 * 1000);
 	}
 
-	void build_trace();
-
 	void serialize_trace(std::ostream& s);
-
-	const Matrix& result_matrix() const;
 
 	uint64_t energy() const
 	{
 		return e;
 	}
 
-private:
+	const Vec& bot_pos() const
+	{
+		return pos;
+	}
+
+	const Matrix& matrix()
+	{
+		return mat;
+	}
+
+	const Matrix& out_matrix()
+	{
+		return out_mat;
+	}
+
+public:
 	void push(Command command);
 
 	void step();
 
 	void push_and_step(Command command);
 
-private:
-	void scan_xz_plane(int y);
+public:
+	void move_to(const Vec& tgt);
 
 private:
-	Matrix matrix;
-	Matrix out_matrix;
+	Matrix mat;
+	Matrix out_mat;
 
 	Harmonics harmonics = Harmonics::Low;
 	uint64_t e = 0;
@@ -272,6 +283,24 @@ private:
 
 	std::pair<bool, Command> curr_command;
 	std::vector<Command> trace;
+
+};
+
+class Builder
+{
+public:
+	Builder(System& system)
+	: s(system)
+	{
+	}
+
+	void build_trace();
+
+private:
+	void scan_xz_plane(int y);
+
+private:
+	System& s;
 
 private:
 	Region bounding_region;

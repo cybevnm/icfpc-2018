@@ -270,125 +270,12 @@ void Command::serialize(std::ostream& s) const
 	}
 }
 
-void System::build_trace()
-{
-	if(matrix.R() < 2)
-	{
-		throw std::runtime_error("Matrix too small for this algo");
-	}
-
-	bounding_region = matrix.calc_bounding_region();
-
-	assert(bounding_region.a.x > 0 && bounding_region.a.x < matrix.R() - 1);
-	assert(bounding_region.a.y >= 0 && bounding_region.a.y < matrix.R() - 1);
-	assert(bounding_region.a.z > 0 && bounding_region.a.z < matrix.R() - 1);
-
-	assert(bounding_region.b.x > 0 && bounding_region.b.x < matrix.R() - 1);
-	assert(bounding_region.b.y >= 0 && bounding_region.b.y < matrix.R() - 1);
-	assert(bounding_region.b.z > 0 && bounding_region.b.z < matrix.R() - 1);
-
-	// Move to the starting point.
-	for(int x = 0; x < bounding_region.a.x; ++x)
-	{
-		push_and_step(Command::smove_x(1));
-	}
-
-	for(int z = 0; z < bounding_region.a.z; ++z)
-	{
-		push_and_step(Command::smove_z(1));
-	}
-
-	////////////////////////////////
-
-	assert(pos.x == bounding_region.a.x
-		|| pos.x == bounding_region.b.x);
-	assert(pos.z == bounding_region.a.z
-		|| pos.z == bounding_region.b.z);
-
-	////////////////////////////////
-
-	push_and_step(Command::smove_y(1));
-
-	push_and_step(Command::flip());
-
-	// Build the model.
-	for(int y = 1; y < bounding_region.b.y + 2; ++y)
-	{
-
-		scan_xz_plane(pos.y - 1);
-
-		if(y < bounding_region.b.y + 1)
-		{
-			push_and_step(Command::smove_y(1));
-		}
-	}
-
-	///////////////////
-
-	assert(pos.y == bounding_region.b.y + 1);
-
-	///////////////////
-
-	push_and_step(Command::flip());
-
-	///////////////////
-
-	if(pos.x != 0)
-	{
-		const int steps_num = pos.x;
-		for(int x = 0; x < steps_num; ++x)
-		{
-			push_and_step(Command::smove_x(-1));
-		}
-	}
-
-	assert(pos.x == 0);
-
-	///////////////////
-
-	if(pos.z != 0)
-	{
-		const int steps_num = pos.z;
-		for(int z = 0; z < steps_num; ++z)
-		{
-			push_and_step(Command::smove_z(-1));
-		}
-
-	}
-
-	assert(pos.z == 0);
-
-	///////////////////
-
-	if(pos.y != 0)
-	{
-		const int steps_num = pos.y;
-		for(int y = 0; y < steps_num; ++y)
-		{
-			push_and_step(Command::smove_y(-1));
-		}
-	}
-
-	assert(pos.y == 0);
-
-	///////////////////
-
-	assert(pos == Vec(0,0,0));
-
-	push_and_step(Command::halt());
-}
-
 void System::serialize_trace(std::ostream& s)
 {
 	for(const auto& c : trace)
 	{
 		c.serialize(s);
 	}
-}
-
-const Matrix& System::result_matrix() const
-{
-	return out_matrix;
 }
 
 void System::push(Command command)
@@ -408,11 +295,11 @@ void System::step()
 	// Global field energy.
 	if(harmonics == Harmonics::Low)
 	{
-		e += (3 * matrix.R() * matrix.R() * matrix.R());
+		e += (3 * mat.R() * mat.R() * mat.R());
 	}
 	else
 	{
-		e += (30 * matrix.R() * matrix.R() * matrix.R());
+		e += (30 * mat.R() * mat.R() * mat.R());
 	}
 
 	// Bots energy.
@@ -447,7 +334,7 @@ void System::step()
 			throw std::runtime_error("Wrong position (negative)");
 		}
 
-		if(pos.x >= matrix.R() || pos.y >= matrix.R() || pos.z >= matrix.R())
+		if(pos.x >= mat.R() || pos.y >= mat.R() || pos.z >= mat.R())
 		{
 			throw std::runtime_error("Wrong position (positive)");
 		}
@@ -461,13 +348,13 @@ void System::step()
 
 			const Vec tgt = pos + command.arg0().second;
 
-			if(out_matrix.voxel(tgt))
+			if(out_mat.voxel(tgt))
 			{
 				e += 6;
 			}
 			else
 			{
-				out_matrix.set_voxel(tgt, true);
+				out_mat.set_voxel(tgt, true);
 				e += 12;
 			}
 
@@ -489,10 +376,178 @@ void System::push_and_step(Command command)
 	step();
 }
 
-void System::scan_xz_plane(int y)
+void System::move_to(const Vec& tgt)
+{
+	// No volatile points in the volume assumed.
+
+	const Vec d = tgt - pos;
+
+	const int max_step_len = 15;
+
+	if(d.x != 0)
+	{
+		const int sign = (d.x > 0) ? 1 : -1;
+		for(int i = 0; i < abs(d.x / max_step_len); ++i)
+		{
+			push_and_step(Command::smove_x(max_step_len * sign));
+		}
+
+		const int rem = d.x % max_step_len;
+		if(rem != 0)
+		{
+			push_and_step(Command::smove_x(rem));
+		}
+	}
+
+	if(d.y != 0)
+	{
+		const int sign = (d.y > 0) ? 1 : -1;
+		for(int i = 0; i < abs(d.y / max_step_len); ++i)
+		{
+			push_and_step(Command::smove_y(max_step_len * sign));
+		}
+
+		const int rem = d.y % max_step_len;
+		if(rem != 0)
+		{
+			push_and_step(Command::smove_y(rem));
+		}
+	}
+
+	if(d.z != 0)
+	{
+		const int sign = (d.z > 0) ? 1 : -1;
+		for(int i = 0; i < abs(d.z / max_step_len); ++i)
+		{
+			push_and_step(Command::smove_z(max_step_len * sign));
+		}
+
+		const int rem = d.z % max_step_len;
+		if(rem != 0)
+		{
+			push_and_step(Command::smove_z(rem));
+		}
+	}
+}
+
+void Builder::build_trace()
+{
+	if(s.matrix().R() < 2)
+	{
+		throw std::runtime_error("Matrix too small for this algo");
+	}
+
+	bounding_region = s.matrix().calc_bounding_region();
+
+	assert(bounding_region.a.x > 0
+		&& bounding_region.a.x < s.matrix().R() - 1);
+	assert(bounding_region.a.y >= 0
+		&& bounding_region.a.y < s.matrix().R() - 1);
+	assert(bounding_region.a.z > 0
+		&& bounding_region.a.z < s.matrix().R() - 1);
+
+	assert(bounding_region.b.x > 0
+		&& bounding_region.b.x < s.matrix().R() - 1);
+	assert(bounding_region.b.y >= 0
+		&& bounding_region.b.y < s.matrix().R() - 1);
+	assert(bounding_region.b.z > 0
+		&& bounding_region.b.z < s.matrix().R() - 1);
+
+	// Move to the starting point.
+	for(int x = 0; x < bounding_region.a.x; ++x)
+	{
+		s.push_and_step(Command::smove_x(1));
+	}
+
+	for(int z = 0; z < bounding_region.a.z; ++z)
+	{
+		s.push_and_step(Command::smove_z(1));
+	}
+
+	////////////////////////////////
+
+	assert(s.bot_pos().x == bounding_region.a.x
+		|| s.bot_pos().x == bounding_region.b.x);
+	assert(s.bot_pos().z == bounding_region.a.z
+		|| s.bot_pos().z == bounding_region.b.z);
+
+	////////////////////////////////
+
+	s.push_and_step(Command::smove_y(1));
+
+	s.push_and_step(Command::flip());
+
+	// Build the model.
+	for(int y = 1; y < bounding_region.b.y + 2; ++y)
+	{
+
+		scan_xz_plane(s.bot_pos().y - 1);
+
+		if(y < bounding_region.b.y + 1)
+		{
+			s.push_and_step(Command::smove_y(1));
+		}
+	}
+
+	///////////////////
+
+	assert(s.bot_pos().y == bounding_region.b.y + 1);
+
+	///////////////////
+
+	s.push_and_step(Command::flip());
+
+	///////////////////
+
+	if(s.bot_pos().x != 0)
+	{
+		const int steps_num = s.bot_pos().x;
+		for(int x = 0; x < steps_num; ++x)
+		{
+			s.push_and_step(Command::smove_x(-1));
+		}
+	}
+
+	assert(s.bot_pos().x == 0);
+
+	///////////////////
+
+	if(s.bot_pos().z != 0)
+	{
+		const int steps_num = s.bot_pos().z;
+		for(int z = 0; z < steps_num; ++z)
+		{
+			s.push_and_step(Command::smove_z(-1));
+		}
+
+	}
+
+	assert(s.bot_pos().z == 0);
+
+	///////////////////
+
+	if(s.bot_pos().y != 0)
+	{
+		const int steps_num = s.bot_pos().y;
+		for(int y = 0; y < steps_num; ++y)
+		{
+			s.push_and_step(Command::smove_y(-1));
+		}
+	}
+
+	assert(s.bot_pos().y == 0);
+
+	///////////////////
+
+	assert(s.bot_pos() == Vec(0,0,0));
+
+	s.push_and_step(Command::halt());
+}
+
+void Builder::scan_xz_plane(int y)
 {
 	assert(y >= 0);
-	assert(pos.y == y + 1 && "bot must be one level above");
+	assert(s.bot_pos().y == y + 1 && "bot must be one level above");
 
 	////////////////////////////////
 
@@ -502,23 +557,23 @@ void System::scan_xz_plane(int y)
 		for(int z = bounding_region.a.z;
 				z <= bounding_region.b.z; ++z)
 		{
-			if(matrix.voxel(pos - Vec(0, 1, 0)))
+			if(s.matrix().voxel(s.bot_pos() - Vec(0, 1, 0)))
 			{
-				push_and_step(Command::fill_below());
+				s.push_and_step(Command::fill_below());
 			}
 
 			if(z != bounding_region.b.z)
 			{
-				push_and_step(Command::smove_z(z_sweep_dir));
+				s.push_and_step(Command::smove_z(z_sweep_dir));
 			}
 		}
 
-		assert(pos.z == bounding_region.a.z
-			|| pos.z == bounding_region.b.z);
+		assert(s.bot_pos().z == bounding_region.a.z
+			|| s.bot_pos().z == bounding_region.b.z);
 
 		if(x != bounding_region.b.x)
 		{
-			push_and_step(Command::smove_x(x_sweep_dir));
+			s.push_and_step(Command::smove_x(x_sweep_dir));
 		}
 
 		z_sweep_dir *= -1;
@@ -528,10 +583,10 @@ void System::scan_xz_plane(int y)
 
 	////////////////////////////////
 
-	assert(pos.x == bounding_region.a.x
-		|| pos.x == bounding_region.b.x);
-	assert(pos.z == bounding_region.a.z
-		|| pos.z == bounding_region.b.z);
+	assert(s.bot_pos().x == bounding_region.a.x
+		|| s.bot_pos().x == bounding_region.b.x);
+	assert(s.bot_pos().z == bounding_region.a.z
+		|| s.bot_pos().z == bounding_region.b.z);
 
 	////////////////////////////////
 }

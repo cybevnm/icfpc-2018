@@ -22,8 +22,9 @@ int main(int argc, char* argv[])
 		std::cerr << "R: " << m.R() << std::endl;
 
 		System s(m);
+		Builder b(s);
 
-		s.build_trace();
+		b.build_trace();
 
 		std::ofstream f(argv[2], std::ios::binary);
 		if(!f)
@@ -35,7 +36,7 @@ int main(int argc, char* argv[])
 
 		s.serialize_trace(f);
 
-		write_model_file(s.result_matrix(), argv[3]);
+		write_model_file(s.out_matrix(), argv[3]);
 	}
 	catch(const std::runtime_error& e)
 	{
