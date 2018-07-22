@@ -69,8 +69,6 @@ Matrix read_model_file(const std::string& path)
 	unsigned char r = 0;
 	f.read(reinterpret_cast<char*>(&r), 1);
 
-	std::cerr << (int)(unsigned char)r << std::endl;
-
 	if(!f || f.gcount() != 1 || r == 0)
 	{
 		throw std::runtime_error("Can't read R from " + path);
