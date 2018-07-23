@@ -14,9 +14,10 @@ int main(int argc, char* argv[])
 			throw std::runtime_error("Wrong argv");
 		}
 
-		std::cerr << "Building trace for reassembling " << argv[1]
-		  << " into " << argv[2] << "."
-			<< " Trace is in " << argv[3] << "."
+		std::cerr
+			<< "Building trace for reassembling " << argv[1]
+			<< " -> " << argv[2]
+			<< " into " << argv[3] << ". "
 			<< " Resulting model is in " << argv[4] << "."
 			<< std::endl;
 
@@ -50,11 +51,11 @@ int main(int argc, char* argv[])
 	catch(const std::runtime_error& e)
 	{
 		std::cerr << e.what() << std::endl;
-		std::cout << "Usage: reassemble src_model tgt_mdl out_trace out_matrix"
+		std::cout
+			<< "Usage: reassemble input_model target_model output_trace output_model"
 			<< std::endl;
 		return 1;
 	}
 
 	return 0;
-
 }

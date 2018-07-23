@@ -33,21 +33,6 @@ std::string read_full(const std::string& path)
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(Vec);
 
-BOOST_AUTO_TEST_CASE(Vec_Test)
-{
-
-}
-
-BOOST_AUTO_TEST_CASE(Command_test)
-{
-
-}
-
-BOOST_AUTO_TEST_CASE(Matrix_test)
-{
-
-}
-
 BOOST_AUTO_TEST_CASE(Model_io_test)
 {
 	BOOST_CHECK_NO_THROW(read_model_file(path("tests/FA001_tgt.mdl")));

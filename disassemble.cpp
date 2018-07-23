@@ -14,8 +14,9 @@ int main(int argc, char* argv[])
 			throw std::runtime_error("Wrong argv");
 		}
 
-		std::cerr << "Building trace for disassembling "
-			<< argv[1] << std::endl;
+		std::cerr
+			<< "Building trace for disassembling " << argv[1]
+			<< " into " << argv[2] << std::endl;
 
 		const Matrix m = read_model_file(argv[1]);
 
@@ -26,7 +27,8 @@ int main(int argc, char* argv[])
 
 		b.run();
 		b.halt();
-		assert(!s.out_matrix().calc_bounding_region().first);
+		assert(!s.out_matrix().calc_bounding_region().first
+			&& "Empty out matrix assumed.");
 
 		std::ofstream f(argv[2], std::ios::binary);
 		if(!f)

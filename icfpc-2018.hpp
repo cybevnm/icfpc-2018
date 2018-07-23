@@ -27,10 +27,6 @@ struct Vec
 		return std::abs(x) + std::abs(y) + std::abs(z);
 	}
 
-	// bool adjacent() const
-	// {
-	// }
-
 	int clen() const
 	{
 		return std::max(std::abs(x), std::max(std::abs(y), std::abs(z)));
@@ -158,18 +154,6 @@ public:
 	std::pair<bool, Region> calc_bounding_region_y(int y) const;
 
 	void print(std::ostream& s) const;
-
-	// bool grounded(const Vec& c) const
-	// {
-	// 	if(c.y == 0)
-	// 	{
-	// 		return true;
-	// 	}
-	// 	else
-	// 	{
-	// 		
-	// 	}
-	// }
 	
 private:
 	std::vector<uint8_t> m_bits;
@@ -287,24 +271,10 @@ enum class Harmonics { Low, High };
 class System
 {
 public:
-	explicit System(const Matrix& matrix)
-	: m_matrix(matrix)
-	, m_out_matrix(matrix.r())
-	{
-		m_trace.reserve(5 * 1000 * 1000);
-	}
+	explicit System(const Matrix& matrix);
 
 	/// Allows to continue the src execution.
-	System(const System& src, const Matrix& matrix)
-	: System(matrix)
-	{
-		assert(!src.m_out_matrix.calc_bounding_region().first);
-		m_harmonics = src.m_harmonics;
-		m_energy = src.m_energy;
-		m_pos = src.m_pos;
-		assert(!src.m_curr_command.first);
-		m_trace = src.m_trace;
-	}
+	System(const System& src, const Matrix& matrix);
 
 	void serialize_trace(std::ostream& s);
 
@@ -357,7 +327,6 @@ private:
 
 	std::pair<bool, Command> m_curr_command;
 	std::vector<Command> m_trace;
-
 };
 
 class Tracer

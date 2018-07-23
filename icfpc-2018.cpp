@@ -10,11 +10,8 @@ std::pair<bool, Region> Matrix::calc_bounding_region() const
 	const int max = std::numeric_limits<int>::max();
 	const int min = std::numeric_limits<int>::min();
 
-	const Vec vmax(max, max, max);
-	const Vec vmin(min, min, min);
-
-	Vec a = vmax;
-	Vec b = vmin;
+	Vec a(max, max, max);
+	Vec b(min, min, min);
 
 	for(int x = 0; x < r(); ++x)
 	{
@@ -81,11 +78,11 @@ std::pair<bool, Region> Matrix::calc_bounding_region_y(int y) const
 
 void Matrix::print(std::ostream& s) const
 {
-	for(size_t y = 0; y < r(); ++y)
+	for(auto y = 0; y < r(); ++y)
 	{
-		for(size_t x = 0; x < r(); ++x)
+		for(auto x = 0; x < r(); ++x)
 		{
-			for(size_t z = 0; z < r(); ++z)
+			for(auto z = 0; z < r(); ++z)
 			{
 				s << (voxel(Vec(x,y,z)) ? 'x' : '.');
 			}
@@ -256,23 +253,20 @@ void Command::serialize(std::ostream& s) const
 {
 	switch(type())
 	{
-	///////////////////////
 	case Halt:
 		{
 			const char a = 0xff;
 			s.write(&a, 1);
-
 			break;
 		}
-	///////////////////////
+
 	case Flip:
 		{
 			const char a = 0xfd;
 			s.write(&a, 1);
-
 			break;
 		}
-	///////////////////////
+
 	case SMove:
 		{
 			assert(m_arg0.first);
@@ -302,7 +296,7 @@ void Command::serialize(std::ostream& s) const
 
 			break;
 		}
-	///////////////////////
+
 	case Fill:
 		{
 			assert(m_arg0.first);
@@ -319,7 +313,7 @@ void Command::serialize(std::ostream& s) const
 
 			break;
 		}
-	///////////////////////
+
 	case Void:
 		{
 			assert(m_arg0.first);
@@ -337,10 +331,27 @@ void Command::serialize(std::ostream& s) const
 			break;
 		}
 
-	///////////////////////
 	default:
 		assert(false);
 	}
+}
+
+System::System(const Matrix& matrix)
+: m_matrix(matrix)
+, m_out_matrix(matrix.r())
+{
+	m_trace.reserve(5 * 1000 * 1000);
+}
+
+System::System(const System& src, const Matrix& matrix)
+: System(matrix)
+{
+	assert(!src.m_out_matrix.calc_bounding_region().first);
+	m_harmonics = src.m_harmonics;
+	m_energy = src.m_energy;
+	m_pos = src.m_pos;
+	assert(!src.m_curr_command.first);
+	m_trace = src.m_trace;
 }
 
 void System::serialize_trace(std::ostream& s)
@@ -353,7 +364,7 @@ void System::serialize_trace(std::ostream& s)
 
 void System::push(Command command)
 {
-	// Only one command per step supported.
+	// Only one command per step is supported.
 	assert(!m_curr_command.first);
 	m_curr_command.first = true;
 	m_curr_command.second = command;
@@ -407,7 +418,7 @@ void System::step()
 			|| m_pos.z < 0)
 		{
 			std::ostringstream os;
-			os << "Wrong position (negative), mat.R = " << m_matrix.r()
+			os << "Wrong position mat.R = " << m_matrix.r()
 				<< ", pos = " << m_pos;
 			throw std::runtime_error(os.str());
 		}
@@ -417,7 +428,7 @@ void System::step()
 			|| m_pos.z >= m_matrix.r())
 		{
 			std::ostringstream os;
-			os << "Wrong position (positive), mat.R = " << m_matrix.r()
+			os << "Wrong position mat.R = " << m_matrix.r()
 				<< ", pos = " << m_pos;
 			throw std::runtime_error(os.str());
 		}
@@ -464,7 +475,6 @@ void System::step()
 
 			break;
 		}
-
 
 	default:
 		assert(false);
@@ -592,7 +602,6 @@ void Tracer::run()
 	assert(m_bounding_region.b.z > 0
 		&& m_bounding_region.b.z < m_system.matrix().r() - 1);
 	
-	///////////////////
 	// Move to the starting point. 
 
 	const int initial_y = m_dir == Tracer::Direction::Up
@@ -606,7 +615,6 @@ void Tracer::run()
 
 	m_system.push_and_step(Command::flip());
 
-	///////////////////
 	// Iterate the matrix.
 
 	for(int y = 1; y < m_bounding_region.b.y + 2; ++y)
@@ -641,7 +649,8 @@ void Tracer::halt()
 void Tracer::scan_xz_plane(int y)
 {
 	assert(y >= 0);
-	assert(m_system.bot_pos().y == y + 1 && "bot must be one level above");
+	assert(m_system.bot_pos().y == y + 1
+		&& "bot must be one level above");
 
 	const auto curr_region
 		= m_system.matrix().calc_bounding_region_y(y);
