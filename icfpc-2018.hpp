@@ -130,27 +130,27 @@ class Matrix
 {
 public:
 	explicit Matrix(unsigned R)
-	: r(R)
+	: m_r(R)
 	{
 		assert(R > 0 && R < 251);
-		bits.resize(R*R*R);
+		m_bits.resize(R*R*R);
 	}
 
-	unsigned R() const
+	unsigned r() const
 	{
-		return r;
+		return m_r;
 	}
 
 	bool voxel(const Vec& c) const
 	{
 		assert(c.valid_coordinate());
-		return bits[c.x * r * r + c.y * r + c.z];
+		return m_bits[c.x * m_r * m_r + c.y * m_r + c.z];
 	}
 
 	void set_voxel(const Vec& c, bool full)
 	{
 		assert(c.valid_coordinate());
-		bits[c.x * r * r + c.y * r + c.z] = full;
+		m_bits[c.x * m_r * m_r + c.y * m_r + c.z] = full;
 	}
 
 	std::pair<bool, Region> calc_bounding_region() const;
@@ -172,8 +172,8 @@ public:
 	// }
 	
 private:
-	std::vector<uint8_t> bits;
-	unsigned r;
+	std::vector<uint8_t> m_bits;
+	unsigned m_r;
 };
 
 /// @throw std::runtime_error
@@ -205,23 +205,23 @@ public:
 	};
 
 	Command()
-	: t(Undefined)
+	: m_type(Undefined)
 	{
 	}
 
 	explicit Command(Type type)
-	: t(type)
+	: m_type(type)
 	{
 	}
 
 	Type type() const
 	{
-		return t;
+		return m_type;
 	}
 
 	const std::pair<bool, Vec>&	arg0() const
 	{
-		return a0;
+		return m_arg0;
 	}
 
 	static Command halt();
@@ -247,8 +247,39 @@ public:
 	void serialize(std::ostream& s) const;
 
 private:
-	Type t;
-	std::pair<bool, Vec> a0;
+	Type m_type;
+	std::pair<bool, Vec> m_arg0;
+};
+
+class Bot
+{
+public:
+	Bot(unsigned id, unsigned parent_id)
+	: m_id(id)
+	, m_parent_id(parent_id)
+	{
+	}
+
+	unsigned id() const
+	{
+		return m_id;
+	}
+
+	unsigned parent_id() const
+	{
+		return m_parent_id;
+	}
+
+	Vec& pos()
+	{
+		return m_pos;
+	}
+
+private:
+	unsigned m_id;
+	unsigned m_parent_id;
+	Vec m_pos;
+	std::vector<unsigned> m_seeds;
 };
 
 enum class Harmonics { Low, High };
@@ -257,44 +288,44 @@ class System
 {
 public:
 	explicit System(const Matrix& matrix)
-	: mat(matrix)
-	, out_mat(matrix.R())
+	: m_matrix(matrix)
+	, m_out_matrix(matrix.r())
 	{
-		trace.reserve(5 * 1000 * 1000);
+		m_trace.reserve(5 * 1000 * 1000);
 	}
 
 	/// Allows to continue the src execution.
 	System(const System& src, const Matrix& matrix)
 	: System(matrix)
 	{
-		assert(!src.out_mat.calc_bounding_region().first);
-		harmonics = src.harmonics;
-		e = src.e;
-		pos = src.pos;
-		assert(!src.curr_command.first);
-		trace = src.trace;
+		assert(!src.m_out_matrix.calc_bounding_region().first);
+		m_harmonics = src.m_harmonics;
+		m_energy = src.m_energy;
+		m_pos = src.m_pos;
+		assert(!src.m_curr_command.first);
+		m_trace = src.m_trace;
 	}
 
 	void serialize_trace(std::ostream& s);
 
 	uint64_t energy() const
 	{
-		return e;
+		return m_energy;
 	}
 
 	const Vec& bot_pos() const
 	{
-		return pos;
+		return m_pos;
 	}
 
 	const Matrix& matrix() const
 	{
-		return mat;
+		return m_matrix;
 	}
 
 	Matrix& out_matrix()
 	{
-		return out_mat;
+		return m_out_matrix;
 	}
 
 public:
@@ -316,16 +347,16 @@ public:
 		MovementOrder order = MovementOrder::XZY);
 
 private:
-	Matrix mat;
-	Matrix out_mat;
+	Matrix m_matrix;
+	Matrix m_out_matrix;
 
-	Harmonics harmonics = Harmonics::Low;
-	uint64_t e = 0;
+	Harmonics m_harmonics = Harmonics::Low;
+	uint64_t m_energy = 0;
 
-	Vec pos;
+	Vec m_pos;
 
-	std::pair<bool, Command> curr_command;
-	std::vector<Command> trace;
+	std::pair<bool, Command> m_curr_command;
+	std::vector<Command> m_trace;
 
 };
 
@@ -335,7 +366,7 @@ public:
 	enum class Direction { Up, Down };
 
 	Tracer(System& system, Direction dir)
-	: s(system), dir(dir)
+	: m_system(system), m_dir(dir)
 	{
 	}
 
@@ -346,9 +377,9 @@ public:
 	void halt();
 
 protected:
-	System& s;
+	System& m_system;
 
-	Direction dir;
+	Direction m_dir;
 
 private:
 	virtual void handle_voxel(const Vec& p) = 0;
@@ -357,7 +388,7 @@ private:
 	void scan_xz_plane(int y);
 
 private:
-	Region bounding_region;
+	Region m_bounding_region;
 
 };
 

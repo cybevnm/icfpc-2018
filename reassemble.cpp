@@ -21,14 +21,14 @@ int main(int argc, char* argv[])
 			<< std::endl;
 
 		const Matrix m1 = read_model_file(argv[1]);
-		std::cerr << "R1: " << m1.R() << std::endl;
+		std::cerr << "R1: " << m1.r() << std::endl;
 
 		System ds(m1);
 		Disassembler d(ds);
 		d.run();
 
 		const Matrix m2 = read_model_file(argv[2]);
-		std::cerr << "R2: " << m2.R() << std::endl;
+		std::cerr << "R2: " << m2.r() << std::endl;
 
 		System as(ds, m2);
 		Assembler a(as);

@@ -16,11 +16,11 @@ std::pair<bool, Region> Matrix::calc_bounding_region() const
 	Vec a = vmax;
 	Vec b = vmin;
 
-	for(int x = 0; x < R(); ++x)
+	for(int x = 0; x < r(); ++x)
 	{
-		for(int y = 0; y < R(); ++y)
+		for(int y = 0; y < r(); ++y)
 		{
-			for(int z = 0; z < R(); ++z)
+			for(int z = 0; z < r(); ++z)
 			{
 				if(voxel(Vec(x, y, z)))
 				{
@@ -54,9 +54,9 @@ std::pair<bool, Region> Matrix::calc_bounding_region_y(int y) const
 	Vec a(max, y, max);
 	Vec b(min, y, min);
 
-	for(int x = 0; x < R(); ++x)
+	for(int x = 0; x < r(); ++x)
 	{
-		for(int z = 0; z < R(); ++z)
+		for(int z = 0; z < r(); ++z)
 		{
 			if(voxel(Vec(x, y, z)))
 			{
@@ -81,11 +81,11 @@ std::pair<bool, Region> Matrix::calc_bounding_region_y(int y) const
 
 void Matrix::print(std::ostream& s) const
 {
-	for(size_t y = 0; y < R(); ++y)
+	for(size_t y = 0; y < r(); ++y)
 	{
-		for(size_t x = 0; x < R(); ++x)
+		for(size_t x = 0; x < r(); ++x)
 		{
-			for(size_t z = 0; z < R(); ++z)
+			for(size_t z = 0; z < r(); ++z)
 			{
 				s << (voxel(Vec(x,y,z)) ? 'x' : '.');
 			}
@@ -146,7 +146,7 @@ void write_model_file(const Matrix& m, const std::string& path)
 		throw std::runtime_error("Can't open " + path);
 	}
 
-	unsigned char r = m.R();
+	unsigned char r = m.r();
 	f.write(reinterpret_cast<char*>(&r), 1);
 	if(!f)
 	{
@@ -196,8 +196,8 @@ Command Command::smove(const Vec& arg)
 		throw std::runtime_error("smove: arg is not lld");
 	}
 	Command c(SMove);
-	c.a0.first = true;
-	c.a0.second = arg;
+	c.m_arg0.first = true;
+	c.m_arg0.second = arg;
 	return c;
 }
 
@@ -224,8 +224,8 @@ Command Command::fill(const Vec& arg)
 	}
 
 	Command c(Fill);
-	c.a0.first = true;
-	c.a0.second = arg;
+	c.m_arg0.first = true;
+	c.m_arg0.second = arg;
 	return c;
 }
 
@@ -242,8 +242,8 @@ Command Command::voiid(const Vec& arg)
 	}
 
 	Command c(Void);
-	c.a0.first = true;
-	c.a0.second = arg;
+	c.m_arg0.first = true;
+	c.m_arg0.second = arg;
 	return c;
 }
 
@@ -275,26 +275,26 @@ void Command::serialize(std::ostream& s) const
 	///////////////////////
 	case SMove:
 		{
-			assert(a0.first);
-			assert(a0.second.lld());
+			assert(m_arg0.first);
+			assert(m_arg0.second.lld());
 
 			unsigned a = 0;
 			unsigned b = 0;
 
-			if(a0.second.x != 0)
+			if(m_arg0.second.x != 0)
 			{
 				a = 0x14;
-				b = (0x1f & (a0.second.x + 15));
+				b = (0x1f & (m_arg0.second.x + 15));
 			}
-			else if(a0.second.y != 0)
+			else if(m_arg0.second.y != 0)
 			{
 				a = 0x24;
-				b = (0x1f & (a0.second.y + 15));
+				b = (0x1f & (m_arg0.second.y + 15));
 			}
-			else if(a0.second.z != 0)
+			else if(m_arg0.second.z != 0)
 			{
 				a = 0x34;
-				b = (0x1f & (a0.second.z + 15));
+				b = (0x1f & (m_arg0.second.z + 15));
 			}
 
 			s.write(reinterpret_cast<char*>(&a), 1);
@@ -305,13 +305,13 @@ void Command::serialize(std::ostream& s) const
 	///////////////////////
 	case Fill:
 		{
-			assert(a0.first);
-			assert(a0.second.nd());
+			assert(m_arg0.first);
+			assert(m_arg0.second.nd());
 
 			unsigned a
-				= 9 * (a0.second.x + 1)
-				+ 3 * (a0.second.y + 1)
-				+ 1 * (a0.second.z + 1);
+				= 9 * (m_arg0.second.x + 1)
+				+ 3 * (m_arg0.second.y + 1)
+				+ 1 * (m_arg0.second.z + 1);
 
 			a = (a << 3) | 0x3;
 
@@ -322,13 +322,13 @@ void Command::serialize(std::ostream& s) const
 	///////////////////////
 	case Void:
 		{
-			assert(a0.first);
-			assert(a0.second.nd());
+			assert(m_arg0.first);
+			assert(m_arg0.second.nd());
 
 			unsigned a
-				= 9 * (a0.second.x + 1)
-				+ 3 * (a0.second.y + 1)
-				+ 1 * (a0.second.z + 1);
+				= 9 * (m_arg0.second.x + 1)
+				+ 3 * (m_arg0.second.y + 1)
+				+ 1 * (m_arg0.second.z + 1);
 
 			a = (a << 3) | 0x2;
 
@@ -345,7 +345,7 @@ void Command::serialize(std::ostream& s) const
 
 void System::serialize_trace(std::ostream& s)
 {
-	for(const auto& c : trace)
+	for(const auto& c : m_trace)
 	{
 		c.serialize(s);
 	}
@@ -354,29 +354,29 @@ void System::serialize_trace(std::ostream& s)
 void System::push(Command command)
 {
 	// Only one command per step supported.
-	assert(!curr_command.first);
-	curr_command.first = true;
-	curr_command.second = command;
+	assert(!m_curr_command.first);
+	m_curr_command.first = true;
+	m_curr_command.second = command;
 }
 
 void System::step()
 {
-	assert(curr_command.first);
+	assert(m_curr_command.first);
 
-	const Command& command = curr_command.second;
+	const Command& command = m_curr_command.second;
 
 	// Global field energy.
-	if(harmonics == Harmonics::Low)
+	if(m_harmonics == Harmonics::Low)
 	{
-		e += (3 * mat.R() * mat.R() * mat.R());
+		m_energy += (3 * m_matrix.r() * m_matrix.r() * m_matrix.r());
 	}
 	else
 	{
-		e += (30 * mat.R() * mat.R() * mat.R());
+		m_energy += (30 * m_matrix.r() * m_matrix.r() * m_matrix.r());
 	}
 
 	// Bots energy.
-	e += 20 * 1;
+	m_energy += 20 * 1;
 
 	// Commands.
 	switch(command.type())
@@ -385,13 +385,13 @@ void System::step()
 		break;
 
 	case Command::Flip:
-		if(harmonics == Harmonics::Low)
+		if(m_harmonics == Harmonics::Low)
 		{
-			harmonics = Harmonics::High;
+			m_harmonics = Harmonics::High;
 		}
 		else
 		{
-			harmonics = Harmonics::Low;
+			m_harmonics = Harmonics::Low;
 		}
 		break;
 
@@ -399,22 +399,26 @@ void System::step()
 		assert(command.arg0().first);
 		assert(command.arg0().second.lld());
 
-		pos = pos + command.arg0().second;
-		e += 2 * command.arg0().second.mlen();
+		m_pos = m_pos + command.arg0().second;
+		m_energy += 2 * command.arg0().second.mlen();
 
-		if(pos.x < 0 || pos.y < 0 || pos.z < 0)
+		if(m_pos.x < 0
+			|| m_pos.y < 0
+			|| m_pos.z < 0)
 		{
 			std::ostringstream os;
-			os << "Wrong position (negative), mat.R = " << mat.R()
-				<< ", pos = " << pos;
+			os << "Wrong position (negative), mat.R = " << m_matrix.r()
+				<< ", pos = " << m_pos;
 			throw std::runtime_error(os.str());
 		}
 
-		if(pos.x >= mat.R() || pos.y >= mat.R() || pos.z >= mat.R())
+		if(m_pos.x >= m_matrix.r()
+			|| m_pos.y >= m_matrix.r()
+			|| m_pos.z >= m_matrix.r())
 		{
 			std::ostringstream os;
-			os << "Wrong position (positive), mat.R = " << mat.R()
-				<< ", pos = " << pos;
+			os << "Wrong position (positive), mat.R = " << m_matrix.r()
+				<< ", pos = " << m_pos;
 			throw std::runtime_error(os.str());
 		}
 
@@ -425,16 +429,16 @@ void System::step()
 			assert(command.arg0().first);
 			assert(command.arg0().second.nd());
 
-			const Vec tgt = pos + command.arg0().second;
+			const Vec tgt = m_pos + command.arg0().second;
 
-			if(out_mat.voxel(tgt))
+			if(m_out_matrix.voxel(tgt))
 			{
-				e += 6;
+				m_energy += 6;
 			}
 			else
 			{
-				out_mat.set_voxel(tgt, true);
-				e += 12;
+				m_out_matrix.set_voxel(tgt, true);
+				m_energy += 12;
 			}
 
 			break;
@@ -445,17 +449,17 @@ void System::step()
 			assert(command.arg0().first);
 			assert(command.arg0().second.nd());
 
-			const Vec tgt = pos + command.arg0().second;
+			const Vec tgt = m_pos + command.arg0().second;
 
-			if(out_mat.voxel(tgt))
+			if(m_out_matrix.voxel(tgt))
 			{
-				out_mat.set_voxel(tgt, false);
-				assert(e >= 12);
-				e -= 12;
+				m_out_matrix.set_voxel(tgt, false);
+				assert(m_energy >= 12);
+				m_energy -= 12;
 			}
 			else
 			{
-				e += 3;
+				m_energy += 3;
 			}
 
 			break;
@@ -466,9 +470,9 @@ void System::step()
 		assert(false);
 	}
 
-	trace.push_back(curr_command.second);
-	curr_command.first = false;
-	curr_command.second = Command();
+	m_trace.push_back(m_curr_command.second);
+	m_curr_command.first = false;
+	m_curr_command.second = Command();
 }
 
 void System::push_and_step(Command command)
@@ -483,7 +487,7 @@ const int max_step_len = 15;
 
 void System::move_to_x(int x)
 {
-	const int dx = x - pos.x;
+	const int dx = x - m_pos.x;
 
 	if(dx != 0)
 	{
@@ -503,7 +507,7 @@ void System::move_to_x(int x)
 
 void System::move_to_y(int y)
 {
-	const int dy = y - pos.y;
+	const int dy = y - m_pos.y;
 
 	if(dy != 0)
 	{
@@ -523,7 +527,7 @@ void System::move_to_y(int y)
 
 void System::move_to_z(int z)
 {
-	const int dz = z - pos.z;
+	const int dz = z - m_pos.z;
 
 	if(dz != 0)
 	{
@@ -561,85 +565,86 @@ void System::move_to(const Vec& tgt, MovementOrder order)
 
 void Tracer::run()
 {
-	if(s.matrix().R() < 2)
+	if(m_system.matrix().r() < 2)
 	{
 		throw std::runtime_error("Matrix too small for this algo");
 	}
 
-	const auto region = s.matrix().calc_bounding_region();
+	const auto region = m_system.matrix().calc_bounding_region();
 	if(!region.first)
 	{
 		throw std::runtime_error("Empty matrix ?");
 	}
 
-	bounding_region = region.second;
+	m_bounding_region = region.second;
 
-	assert(bounding_region.a.x > 0
-		&& bounding_region.a.x < s.matrix().R() - 1);
-	assert(bounding_region.a.y >= 0
-		&& bounding_region.a.y < s.matrix().R() - 1);
-	assert(bounding_region.a.z > 0
-		&& bounding_region.a.z < s.matrix().R() - 1);
+	assert(m_bounding_region.a.x > 0
+		&& m_bounding_region.a.x < m_system.matrix().r() - 1);
+	assert(m_bounding_region.a.y >= 0
+		&& m_bounding_region.a.y < m_system.matrix().r() - 1);
+	assert(m_bounding_region.a.z > 0
+		&& m_bounding_region.a.z < m_system.matrix().r() - 1);
 
-	assert(bounding_region.b.x > 0
-		&& bounding_region.b.x < s.matrix().R() - 1);
-	assert(bounding_region.b.y >= 0
-		&& bounding_region.b.y < s.matrix().R() - 1);
-	assert(bounding_region.b.z > 0
-		&& bounding_region.b.z < s.matrix().R() - 1);
+	assert(m_bounding_region.b.x > 0
+		&& m_bounding_region.b.x < m_system.matrix().r() - 1);
+	assert(m_bounding_region.b.y >= 0
+		&& m_bounding_region.b.y < m_system.matrix().r() - 1);
+	assert(m_bounding_region.b.z > 0
+		&& m_bounding_region.b.z < m_system.matrix().r() - 1);
 	
 	///////////////////
 	// Move to the starting point. 
 
-	const int initial_y = dir == Tracer::Direction::Up
-		? 1 : (bounding_region.b.y + 1);
+	const int initial_y = m_dir == Tracer::Direction::Up
+		? 1 : (m_bounding_region.b.y + 1);
 
-	Vec initial_pos(bounding_region.a.x, initial_y, bounding_region.a.z);
-	s.move_to(initial_pos, System::MovementOrder::YZX);
-	assert(s.bot_pos() == initial_pos);
+	Vec initial_pos(m_bounding_region.a.x, initial_y, m_bounding_region.a.z);
+	m_system.move_to(initial_pos, System::MovementOrder::YZX);
+	assert(m_system.bot_pos() == initial_pos);
 
 	///////////////////
 
-	s.push_and_step(Command::flip());
+	m_system.push_and_step(Command::flip());
 
 	///////////////////
 	// Iterate the matrix.
 
-	for(int y = 1; y < bounding_region.b.y + 2; ++y)
+	for(int y = 1; y < m_bounding_region.b.y + 2; ++y)
 	{
-		scan_xz_plane(s.bot_pos().y - 1);
+		scan_xz_plane(m_system.bot_pos().y - 1);
 
-		if(y < bounding_region.b.y + 1)
+		if(y < m_bounding_region.b.y + 1)
 		{
-			s.push_and_step(Command::smove_y(
-				(dir == Tracer::Direction::Up) ? 1 : -1));
+			m_system.push_and_step(Command::smove_y(
+				(m_dir == Tracer::Direction::Up) ? 1 : -1));
 		}
 	}
 
 	///////////////////
 
-	assert(s.bot_pos().y == bounding_region.b.y + 1
-		|| s.bot_pos().y == 1);
+	assert(m_system.bot_pos().y == m_bounding_region.b.y + 1
+		|| m_system.bot_pos().y == 1);
 
 	///////////////////
 
-	s.push_and_step(Command::flip());
+	m_system.push_and_step(Command::flip());
 }
 
 void Tracer::halt()
 {
-	s.move_to(Vec());
-	assert(s.bot_pos() == Vec());
+	m_system.move_to(Vec());
+	assert(m_system.bot_pos() == Vec());
 
-	s.push_and_step(Command::halt());
+	m_system.push_and_step(Command::halt());
 }
 
 void Tracer::scan_xz_plane(int y)
 {
 	assert(y >= 0);
-	assert(s.bot_pos().y == y + 1 && "bot must be one level above");
+	assert(m_system.bot_pos().y == y + 1 && "bot must be one level above");
 
-	const auto curr_region = s.matrix().calc_bounding_region_y(y);
+	const auto curr_region
+		= m_system.matrix().calc_bounding_region_y(y);
 
 	if(curr_region.first)
 	{
@@ -653,7 +658,8 @@ void Tracer::scan_xz_plane(int y)
 		const auto closest_vertex_it = std::min_element(
 			begin(vertices), end(vertices),
 			[&](const auto& a, const auto& b) {
-				return (a - s.bot_pos()).mlen() < (b - s.bot_pos()).mlen();
+				return (a - m_system.bot_pos()).mlen()
+			    < (b - m_system.bot_pos()).mlen();
 		});
 		assert(closest_vertex_it != vertices.end());
 
@@ -661,7 +667,8 @@ void Tracer::scan_xz_plane(int y)
 			+ ((closest_vertex_it - vertices.begin()) + 2) % vertices.size();
 		assert(furthest_vertex_it != vertices.end());
 
-		s.move_to(closest_vertex_it->xz(s.bot_pos().y));
+		m_system.move_to(
+			closest_vertex_it->xz(m_system.bot_pos().y));
 		
 		const int x_sweep_dir
 			= (closest_vertex_it->x < furthest_vertex_it->x) ? 1 : -1;
@@ -678,9 +685,9 @@ void Tracer::scan_xz_plane(int y)
 					z != tgt_z + z_sweep_dir;
 					z += z_sweep_dir)
 			{
-				if(s.matrix().voxel(Vec(x, y, z)))
+				if(m_system.matrix().voxel(Vec(x, y, z)))
 				{
-					s.move_to(Vec(x, s.bot_pos().y, z));
+					m_system.move_to(Vec(x, m_system.bot_pos().y, z));
 					handle_voxel(Vec(x, y, z));
 				}
 			}
@@ -692,12 +699,12 @@ void Tracer::scan_xz_plane(int y)
 
 void Assembler::handle_voxel(const Vec& p)
 {
-	s.push_and_step(Command::fill_below());
+	m_system.push_and_step(Command::fill_below());
 }
 
 void Disassembler::handle_voxel(const Vec& p)
 {
-	s.push_and_step(Command::voiid_below());
+	m_system.push_and_step(Command::voiid_below());
 }
 
 } //

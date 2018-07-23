@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
 		const Matrix m = read_model_file(argv[1]);
 
-		std::cerr << "R: " << m.R() << std::endl;
+		std::cerr << "R: " << m.r() << std::endl;
 
 		System s(m);
 		Disassembler b(s);
