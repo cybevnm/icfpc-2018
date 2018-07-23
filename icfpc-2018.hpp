@@ -172,7 +172,7 @@ public:
 	// }
 	
 private:
-	std::vector<int> bits;
+	std::vector<uint8_t> bits;
 	unsigned r;
 };
 
