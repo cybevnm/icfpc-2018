@@ -1,3 +1,6 @@
+// ICFPC2018 solution code chunks.
+// Copyright (C) 2018 cybevnm
+
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE tests
 

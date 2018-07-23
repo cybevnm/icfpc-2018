@@ -1,3 +1,6 @@
+# ICFPC2018 solution code chunks.
+# Copyright (C) 2018 cybevnm
+
 cmake_minimum_required(VERSION 3.0)
 
 project(icfpc-2018)

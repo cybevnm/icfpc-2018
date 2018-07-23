@@ -1,3 +1,6 @@
+/// ICFPC2018 solution code chunks.
+/// Copyright (C) 2018 cybevnm
+
 #include <iostream>
 #include <fstream>
 
